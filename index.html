@@ -501,6 +501,12 @@ OPD/IPD, Age, and Gender
       <div class="card-sub">% of IPD visits attributable to 70+ age group vs. overall 70+ share</div>
       <canvas id="elderlyChart" height="230"></canvas>
     </div>
+    <div class="grid g2">
+    <div class="card">
+      <div class="card-title">Gender-Specific Condition Profile</div>
+      <div class="card-sub">Top 5 conditions by gender — distinct burden patterns</div>
+      <canvas id="genderConditionChart" height="250"></canvas>
+    </div>
   </div>
 </div>
 
@@ -660,12 +666,10 @@ ICHI Interventions
       <canvas id="concentrationChart" height="250"></canvas>
     </div>
   </div>
-
-  <div class="alert alert-warn">
-    <strong>Care quality note:</strong> CCI of 0.591 with 30% NCD patients is a concern — chronic TM management (herbal medicine for T2DM, acupuncture for HTN) requires consistent practitioner relationships. Calculate CCI separately for NCD subgroup in real data.
-  </div>
 </div>
 
+
+</div>
 
 
 <!-- ═══════════════ S8: ROADMAP ═══════════════ -->
@@ -902,27 +906,6 @@ new Chart(document.getElementById('genderConditionChart'), {
     scales: {
       x: { ticks: { color: '#8a8880', maxRotation: 40, font: { size: 10 } }, grid: { color: '#eeecea' } },
       y: { ticks: { color: '#8a8880', callback: v => (v/1000).toFixed(0)+'K' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
-
-// E2: NCD burden
-new Chart(document.getElementById('ncdBurdenChart'), {
-  type: 'bar',
-  data: {
-    labels: COUNTRIES,
-    datasets: [{
-      label: 'NCD Visit Rate (%)',
-      data: [29.91,30.09,29.93,29.99,29.98,30.08],
-      backgroundColor: MONO,
-      borderRadius: 3
-    }]
-  },
-  options: { ...OPTS_BASE,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { min: 29, max: 31, ticks: { color: '#8a8880', callback: v => v+'%' }, grid: { color: '#eeecea' } }
     }
   }
 });
