@@ -60,16 +60,16 @@
 
 <div class="sim-banner">
     <div class="sim-dot"></div>
-    <span><strong>LIVE DATA</strong> · Synchronized with Google Sheets MDS Repository</span>
+    <span><strong>LIVE DATA</strong> · Synchronized with Real-time MDS Repository</span>
 </div>
 
 <div class="masthead">
     <h1>Traditional Medicine Global Observatory</h1>
-    <p style="color: var(--ink-dim); font-family: 'IBM Plex Mono'; font-size: 10px; margin-top: 5px;">ICD-11 TM & ICHI ANALYTICS ENGINE</p>
+    <p style="color: var(--ink-dim); font-family: 'IBM Plex Mono'; font-size: 10px; margin-top: 5px;">Minimum Data Set within Routine Health Information System - ICD-11 TM & ICHI ANALYTICS</p>
 </div>
 
 <div class="central-message">
-    Traditional medicine data collected via <strong>MDS-RHIS</strong> pilot (Brazil, Nepal, Malaysia, Sri Lanka, Mauritius).
+    Traditional medicine data collected via <strong>MDS-RHIS</strong> pilot (Country A, B, C, D, E).
 </div>
 
 <div class="body-wrap">
@@ -89,10 +89,13 @@
             <div class="card-title">OPD/IPD Ratio by Country</div>
             <canvas id="opdIpdChart" height="200"></canvas>
         </div>
-        <div class="card">
-            <div class="card-title">Gender Distribution by Age Group</div>
-            <canvas id="gpiAgeChart" height="200"></canvas>
-        </div>
+       <div class="card">
+    <div class="card-title">Gender Parity Index by Age Group & Country</div>
+    <div class="card-sub" style="font-size: 10px; color: var(--ink-dim); margin-bottom: 10px;">
+        Bars: Country-specific GPI | Line: Global Average (F/M Ratio)
+    </div>
+    <canvas id="gpiAgeChart" height="250"></canvas>
+</div>
     </div>
 
     <div class="section-head">
@@ -133,6 +136,83 @@ async function initDashboard() {
 }
 
 function renderDashboard(data) {
+    function renderGpiAgeChart(data) {
+    const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
+    const countries = [...new Set(data.map(d => d.Country))].sort();
+    const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8', '#b85a5a'];
+
+    // 1. 나이 그룹 판별 함수
+    const getAgeGroup = (dob) => {
+        const age = 2026 - new Date(dob).getFullYear();
+        if (age <= 14) return '0-14';
+        if (age <= 29) return '15-29';
+        if (age <= 44) return '30-44';
+        if (age <= 59) return '45-59';
+        if (age <= 74) return '60-74';
+        return '75+';
+    };
+
+    // 2. 데이터 구조화
+    const datasets = countries.map((country, idx) => ({
+        type: 'bar',
+        label: country,
+        data: ageGroups.map(group => {
+            const groupData = data.filter(d => d.Country === country && getAgeGroup(d['Date of birth']) === group);
+            const f = groupData.filter(d => d.Gender === 'Female').length;
+            const m = groupData.filter(d => d.Gender === 'Male').length;
+            return m === 0 ? (f > 0 ? 2 : 1) : parseFloat((f / m).toFixed(2));
+        }),
+        backgroundColor: colors[idx % colors.length],
+        barPercentage: 0.8,
+        categoryPercentage: 0.8
+    }));
+
+    // 3. 전체 평균선(Line) 계산
+    const globalAverages = ageGroups.map(group => {
+        const groupData = data.filter(d => getAgeGroup(d['Date of birth']) === group);
+        const f = groupData.filter(d => d.Gender === 'Female').length;
+        const m = groupData.filter(d => d.Gender === 'Male').length;
+        return m === 0 ? 1 : parseFloat((f / m).toFixed(2));
+    });
+
+    datasets.push({
+        type: 'line',
+        label: 'Global Average',
+        data: globalAverages,
+        borderColor: '#1c1b18',
+        borderWidth: 2,
+        pointBackgroundColor: '#1c1b18',
+        fill: false,
+        tension: 0.3,
+        order: -1 // 선이 막대보다 위로 오게 설정
+    });
+
+    // 4. 차트 생성
+    new Chart(document.getElementById('gpiAgeChart'), {
+        data: {
+            labels: ageGroups,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'GPI (Female/Male)', font: { size: 10 } },
+                    grid: { color: '#eeecea' }
+                },
+                x: { grid: { display: false } }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 8, font: { size: 9 } }
+                },
+                // 1.0 기준선 (Parity) 추가를 위한 플러그인 생략 가능하지만 넣으면 직관적입니다.
+            }
+        }
+    });
+}
     // 1. KPI 계산
     const total = data.length;
     const female = data.filter(d => d.Gender === 'Female').length;
