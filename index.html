@@ -3,236 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TM Global MDS · Live Dashboard</title>
+    <title>Minimum Data Set within Routine Health Information System - ICD-11 TM & ICHI ANALYTICS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f7f6f3; --bg2: #eeecea; --surface: #ffffff; --border: #d8d5d0;
-            --border2: #c4c1bb; --ink: #1c1b18; --ink-mid: #4a4843; --ink-dim: #8a8880;
-            --ink-xdim: #b0aea9; --c-blue: #4a7c8e; --c-purple: #7a5c8a; --c-green: #6b8f5e;
+            --bg: #f7f6f3; --surface: #ffffff; --border: #d8d5d0; --ink: #1c1b18; 
+            --ink-dim: #8a8880; --c-blue: #4a7c8e; --c-purple: #7a5c8a; --c-green: #6b8f5e;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; line-height: 1.6; }
-
-        /* Banner & Header */
-        .sim-banner { background: var(--ink); color: #f7f6f3; padding: 10px 48px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; display: flex; align-items: center; gap: 10px; }
-        .sim-dot { width: 8px; height: 8px; background: #f0e8d0; border-radius: 50%; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-
-        .masthead { background: var(--surface); border-bottom: 1px solid var(--border); padding: 30px 48px; }
-        .masthead h1 { font-size: 24px; font-weight: 600; }
-        .central-message { background: var(--ink); color: #f7f6f3; padding: 20px 48px; font-size: 15px; border-left: 4px solid #f0e8d0; }
-
-        /* Layout */
+        body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; }
+        .masthead { background: var(--surface); border-bottom: 1px solid var(--border); padding: 25px 48px; }
         .body-wrap { max-width: 1400px; margin: 0 auto; padding: 20px 40px; }
-        .section-head { border-bottom: 1px solid var(--border2); margin: 30px 0 20px; padding-bottom: 10px; display: flex; align-items: baseline; gap: 15px; }
-        .section-head h2 { font-size: 18px; }
-
+        .section-head { border-bottom: 1px solid var(--border); margin: 30px 0 15px; padding-bottom: 8px; }
         .grid { display: grid; gap: 20px; margin-bottom: 20px; }
+        .g1 { grid-template-columns: 1fr; }
         .g2 { grid-template-columns: 1fr 1fr; }
         .g3 { grid-template-columns: repeat(3, 1fr); }
-
-        /* Card & KPI */
-        .card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 4px; }
-        .card-title { font-weight: 600; margin-bottom: 15px; font-size: 14px; }
-        
+        .card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 4px; position: relative; }
+        .card-title { font-weight: 600; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+        #loading { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono'; }
         .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .kpi { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-top: 3px solid var(--ink); }
-        .kpi .kv { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 500; display: block; }
-        .kpi .kl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
-
-        /* Loading Overlay */
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; }
-
-        /* Horizontal Bars */
-        .hbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .hbar-label { width: 140px; font-size: 11px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .hbar-track { flex: 1; height: 8px; background: var(--bg2); border-radius: 2px; }
-        .hbar-fill { height: 100%; background: var(--ink); border-radius: 2px; }
-        .hbar-val { width: 40px; font-size: 11px; color: var(--ink-dim); font-family: 'IBM Plex Mono'; }
+        .kpi { background: var(--surface); border: 1px solid var(--border); padding: 15px; border-top: 3px solid var(--ink); }
+        .kpi span { display: block; font-family: 'IBM Plex Mono'; }
+        .kpi .kv { font-size: 22px; font-weight: 600; }
+        .kpi .kl { font-size: 10px; color: var(--ink-dim); text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div id="loading">CONNECTING TO REAL-TIME DATA SET...</div>
-
-<div class="sim-banner">
-    <div class="sim-dot"></div>
-    <span><strong>LIVE DATA</strong> · Synchronized with Real-time MDS Repository</span>
-</div>
+<div id="loading">Synchronized with Real-time MDS Repository...</div>
 
 <div class="masthead">
-    <h1>Traditional Medicine Global Observatory</h1>
-    <p style="color: var(--ink-dim); font-family: 'IBM Plex Mono'; font-size: 10px; margin-top: 5px;">Minimum Data Set within Routine Health Information System - ICD-11 TM & ICHI ANALYTICS</p>
-</div>
-
-<div class="central-message">
-    Traditional medicine data collected via <strong>MDS-RHIS</strong> pilot (Country A, B, C, D, E).
+    <h1>TM Global Observatory <span style="font-weight: 300; font-size: 18px;">hello</span></h1>
 </div>
 
 <div class="body-wrap">
-    <div class="section-head">
-        <h2 id="s1">01 · Service Access & Demographics</h2>
-    </div>
-
     <div class="kpi-strip">
         <div class="kpi"><span class="kv" id="kpi-total">-</span><span class="kl">Total Visits</span></div>
-        <div class="kpi"><span class="kv" id="kpi-gpi">-</span><span class="kl">Gender Parity (F/M)</span></div>
+        <div class="kpi"><span class="kv" id="kpi-gpi">-</span><span class="kl">Gender Parity</span></div>
         <div class="kpi"><span class="kv" id="kpi-opdipd">-</span><span class="kl">OPD/IPD Ratio</span></div>
-        <div class="kpi"><span class="kv" id="kpi-elderly">-</span><span class="kl">Elderly Burden %</span></div>
+        <div class="kpi"><span class="kv" id="kpi-elderly">-</span><span class="kl">Elderly %</span></div>
     </div>
 
     <div class="grid g2">
         <div class="card">
+            <div class="card-title">Gender Parity by Age Group & Country</div>
+            <canvas id="gpiAgeChart" height="250"></canvas>
+        </div>
+        <div class="card">
             <div class="card-title">OPD/IPD Ratio by Country</div>
-            <canvas id="opdIpdChart" height="200"></canvas>
+            <canvas id="opdIpdChart" height="250"></canvas>
         </div>
-       <div class="card">
-    <div class="card-title">Gender Parity Index by Age Group & Country</div>
-    <div class="card-sub" style="font-size: 10px; color: var(--ink-dim); margin-bottom: 10px;">
-        Bars: Country-specific GPI | Line: Global Average (F/M Ratio)
-    </div>
-    <canvas id="gpiAgeChart" height="250"></canvas>
-</div>
     </div>
 
-    <div class="section-head">
-        <h2 id="s2">02 · TM Morbidity (ICD-11 Chapter 26)</h2>
-    </div>
-
-    <div class="grid g3">
+    <div class="section-head"><h2>Annual Trend & Deep Dive Analysis</h2></div>
+    <div class="grid g1">
         <div class="card">
-            <div class="card-title">Top 10 TM Disorders</div>
-            <canvas id="disorderChart" height="350"></canvas>
-        </div>
-        <div class="card">
-            <div class="card-title">Top 10 TM Patterns</div>
-            <canvas id="patternChart" height="350"></canvas>
-        </div>
-        <div class="card">
-            <div class="card-title">ICHI Intervention Consistency</div>
-            <div id="ichiBars"></div>
-        </div>
-    </div>
-
-    <div class="section-head">
-    <h2>03 · Annual Patient Trends & Deep Dive</h2>
-</div>
-
-<div class="grid g1">
-    <div class="card">
-        <div class="card-title">Unique Patients by Year & Country (Click Average Points for Details)</div>
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-            <canvas id="annualTrendChart" height="300"></canvas>
-            <div class="card" style="border: 1px dashed var(--border2);">
-                <div class="card-title" style="font-size: 11px;">Selected Year: <span id="selected-year-label">Total</span></div>
-                <canvas id="modalityRadarChart"></canvas>
+            <div class="card-title">Unique Patients by Year (Click Average Dots for Details)</div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 350px;">
+                <canvas id="annualTrendChart"></canvas>
+                <div style="text-align: center;">
+                    <div id="selected-year-label" style="font-family: 'IBM Plex Mono'; font-weight: 600; margin-bottom: 10px;">Total Data</div>
+                    <canvas id="modalityRadarChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="grid g3">
-    <div class="card">
-        <div class="card-title">ICD-11 Code Distribution</div>
-        <canvas id="subIcdChart" height="250"></canvas>
+    <div class="grid g3">
+        <div class="card"><div class="card-title">Selected Year: ICD-11</div><canvas id="subIcdChart" height="220"></canvas></div>
+        <div class="card"><div class="card-title">Selected Year: Disorder</div><canvas id="subDisorderChart" height="220"></canvas></div>
+        <div class="card"><div class="card-title">Selected Year: Pattern</div><canvas id="subPatternChart" height="220"></canvas></div>
     </div>
-    <div class="card">
-        <div class="card-title">TM Disorder Analysis</div>
-        <canvas id="subDisorderChart" height="250"></canvas>
-    </div>
-    <div class="card">
-        <div class="card-title">TM Pattern Analysis</div>
-        <canvas id="subPatternChart" height="250"></canvas>
-    </div>
-</div>
 </div>
 
 <script>
-// 1. 설정: 구글 앱스 스크립트 배포 URL (본인의 URL로 반드시 수정)
 const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
-// 전역 변수: 하위 차트들을 제어하기 위해 저장하는 객체
 let subCharts = { radar: null, icd: null, disorder: null, pattern: null };
 
-// 페이지 로드 시 대시보드 초기화
 document.addEventListener('DOMContentLoaded', initDashboard);
 
 async function initDashboard() {
     try {
         const response = await fetch(API_URL);
         const data = await response.json();
-        
-        // 로딩 메시지 숨기기
         document.getElementById('loading').style.display = 'none';
-        
-        // 대시보드 메인 컨트롤러 실행
         renderDashboard(data);
     } catch (err) {
-        document.getElementById('loading').innerText = "데이터 연결 실패. URL을 확인하세요.";
-        console.error("Fetch Error:", err);
+        document.getElementById('loading').innerText = "Connection Error.";
+        console.error(err);
     }
 }
 
-/**
- * [Main Controller] 모든 차트 함수를 여기서 관리합니다.
- */
 function renderDashboard(data) {
-    updateKPIs(data);               // 1. KPI 카드 업데이트
-    renderOpdIpdChart(data);        // 2. 국가별 OPD/IPD
-    renderGpiAgeChart(data);        // 3. 연령대별 성별 지수 (콤보)
-    renderAnnualInteractiveChart(data); // 4. 연도별 트렌드 & 상호작용 차트 (신규)
-    
-    // 섹션 2의 기본 차트들
-    renderDisorderChart(data);
-    renderIchiBars(data);
+    updateKPIs(data);
+    renderOpdIpdChart(data);
+    renderGpiAgeChart(data);
+    renderAnnualInteractiveChart(data);
 }
 
-/**
- * [KPI] 상단 요약 지표
- */
 function updateKPIs(data) {
     const total = data.length;
     const female = data.filter(d => d.Gender === 'Female').length;
     const male = data.filter(d => d.Gender === 'Male').length;
     const ipd = data.filter(d => d.Visit_Type === 'IPD').length;
-    
+    const elderly = data.filter(d => (2026 - new Date(d['Date of birth']).getFullYear()) >= 70).length;
+
     document.getElementById('kpi-total').innerText = total.toLocaleString();
     document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
-    document.getElementById('kpi-opdipd').innerText = ((total - ipd) / (ipd || 1)).toFixed(1) + ":1";
-    
-    const elderly = data.filter(d => (2026 - new Date(d['Date of birth']).getFullYear()) >= 70).length;
+    document.getElementById('kpi-opdipd').innerText = ((total-ipd) / (ipd || 1)).toFixed(1) + ":1";
     document.getElementById('kpi-elderly').innerText = ((elderly / total) * 100).toFixed(1) + "%";
 }
 
-/**
- * [차트 3] 연도별 Unique Patients & Interaction (가장 핵심!)
- */
 function renderAnnualInteractiveChart(data) {
     const years = [2022, 2023, 2024, 2025, 2026];
     const countries = [...new Set(data.map(d => d.Country))].sort();
     const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'];
 
-    const getYear = (dateStr) => new Date(dateStr).getFullYear();
-
-    // 국가별 Unique Patient 막대 데이터
-    const datasets = countries.map((country, idx) => ({
+    const datasets = countries.map((c, i) => ({
         type: 'bar',
-        label: country,
-        data: years.map(year => {
-            const matches = data.filter(d => d.Country === country && getYear(d['Visit Date']) === year);
-            return new Set(matches.map(d => d.Patient_ID)).size; 
+        label: c,
+        data: years.map(y => {
+            const matches = data.filter(d => d.Country === c && new Date(d['Visit Date']).getFullYear() === y);
+            return new Set(matches.map(d => d.Patient_ID)).size;
         }),
-        backgroundColor: colors[idx % colors.length],
+        backgroundColor: colors[i % 5],
         barPercentage: 0.6
     }));
 
-    // 평균선 데이터
-    const annualAverages = years.map(year => {
-        const yearData = data.filter(d => getYear(d['Visit Date']) === year);
-        const uniqueTotal = new Set(yearData.map(d => d.Patient_ID)).size;
-        return uniqueTotal / (countries.length || 1);
+    const annualAverages = years.map(y => {
+        const yearData = data.filter(d => new Date(d['Visit Date']).getFullYear() === y);
+        return new Set(yearData.map(d => d.Patient_ID)).size / (countries.length || 1);
     });
 
     datasets.push({
@@ -242,154 +144,92 @@ function renderAnnualInteractiveChart(data) {
         borderColor: '#1c1b18',
         borderWidth: 3,
         pointRadius: 6,
-        pointHoverRadius: 10,
-        pointBackgroundColor: '#f0e8d0',
         fill: false,
         tension: 0,
         order: -1
     });
 
-    const ctx = document.getElementById('annualTrendChart').getContext('2d');
-    new Chart(ctx, {
+    new Chart(document.getElementById('annualTrendChart'), {
         data: { labels: years, datasets: datasets },
         options: {
-            onClick: (evt, elements) => {
-                if (elements.length > 0) {
-                    const idx = elements[0].index;
-                    const selectedYear = years[idx];
-                    updateSubCharts(data, selectedYear); // 클릭 시 하위 차트 업데이트
-                }
-            },
-            responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
+            onClick: (e, el) => {
+                if (el.length > 0) {
+                    const year = years[el[0].index];
+                    updateSubCharts(data, year);
+                }
+            }
         }
     });
 
-    // 초기값은 'Total'로 세팅
     updateSubCharts(data, "Total");
 }
 
-/**
- * [상호작용 로직] 특정 점 클릭 시 호출되는 함수
- */
 function updateSubCharts(data, year) {
-    const labelElem = document.getElementById('selected-year-label');
-    if(labelElem) labelElem.innerText = year;
+    document.getElementById('selected-year-label').innerText = year === "Total" ? "All Years Combined" : "Year: " + year;
+    const filtered = year === "Total" ? data : data.filter(d => new Date(d['Visit Date']).getFullYear() === year);
 
-    const filtered = year === "Total" 
-        ? data 
-        : data.filter(d => new Date(d['Visit Date']).getFullYear() === year);
-
-    // 1. Modality 방사형 차트
     renderRadar(filtered);
-    // 2. 하단 세 개 분석 차트
     renderSubBar(filtered, 'ICD11_Code', 'subIcdChart', '#4a7c8e');
     renderSubBar(filtered, 'TM_Disorder', 'subDisorderChart', '#7a5c8a');
     renderSubBar(filtered, 'TM_Pattern', 'subPatternChart', '#6b8f5e');
 }
 
-function renderRadar(filteredData) {
+function renderRadar(fData) {
     const counts = {};
-    filteredData.forEach(d => counts[d.Modality] = (counts[d.Modality] || 0) + 1);
-    
+    fData.forEach(d => counts[d.Modality] = (counts[d.Modality] || 0) + 1);
     if(subCharts.radar) subCharts.radar.destroy();
     subCharts.radar = new Chart(document.getElementById('modalityRadarChart'), {
         type: 'radar',
-        data: {
-            labels: Object.keys(counts),
-            datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.2)', borderColor: '#4a7c8e' }]
-        },
-        options: { plugins: { legend: false }, scales: { r: { ticks: { display: false } } } }
+        data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.2)', borderColor: '#4a7c8e' }]},
+        options: { plugins: { legend: false } }
     });
 }
 
-function renderSubBar(filteredData, field, canvasId, color) {
+function renderSubBar(fData, field, canvasId, color) {
     const counts = {};
-    filteredData.forEach(d => counts[d[field]] = (counts[d[field]] || 0) + 1);
-    const top5 = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
-
+    fData.forEach(d => counts[d[field]] = (counts[d[field]] || 0) + 1);
+    const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
     if(subCharts[canvasId]) subCharts[canvasId].destroy();
-    subCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+    subCharts[canvasId] = new Chart(document.getElementById(canvasId), {
         type: 'bar',
-        data: {
-            labels: top5.map(x => x[0]),
-            datasets: [{ data: top5.map(x => x[1]), backgroundColor: color }]
-        },
+        data: { labels: top.map(x => x[0]), datasets: [{ data: top.map(x => x[1]), backgroundColor: color }]},
         options: { indexAxis: 'y', plugins: { legend: false }, maintainAspectRatio: false }
     });
 }
 
-/**
- * [기타 기본 차트들]
- */
 function renderGpiAgeChart(data) {
     const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
     const countries = [...new Set(data.map(d => d.Country))].sort();
-    const getAgeGroup = (dob) => {
+    const getAge = (dob) => {
         const age = 2026 - new Date(dob).getFullYear();
         if (age <= 14) return '0-14'; if (age <= 29) return '15-29';
         if (age <= 44) return '30-44'; if (age <= 59) return '45-59';
         if (age <= 74) return '60-74'; return '75+';
     };
-
     const datasets = countries.map((c, i) => ({
         type: 'bar', label: c, backgroundColor: ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'][i%5],
         data: ageGroups.map(g => {
-            const d = data.filter(x => x.Country === c && getAgeGroup(x['Date of birth']) === g);
+            const d = data.filter(x => x.Country === c && getAge(x['Date of birth']) === g);
             const f = d.filter(x => x.Gender === 'Female').length;
             const m = d.filter(x => x.Gender === 'Male').length;
             return m === 0 ? 1 : parseFloat((f/m).toFixed(2));
         })
     }));
-
-    new Chart(document.getElementById('gpiAgeChart'), {
-        data: { labels: ageGroups, datasets: datasets },
-        options: { scales: { y: { beginAtZero: true } } }
-    });
+    new Chart(document.getElementById('gpiAgeChart'), { data: { labels: ageGroups, datasets: datasets }});
 }
 
 function renderOpdIpdChart(data) {
     const countries = [...new Set(data.map(d => d.Country))].sort();
-    const values = countries.map(c => {
+    const vals = countries.map(c => {
         const d = data.filter(x => x.Country === c);
         return (d.filter(x => x.Visit_Type === 'OPD').length / (d.filter(x => x.Visit_Type === 'IPD').length || 1)).toFixed(2);
     });
     new Chart(document.getElementById('opdIpdChart'), {
         type: 'bar',
-        data: { labels: countries, datasets: [{ label: 'Ratio', data: values, backgroundColor: '#4a7c8e' }] }
-    });
-}
-
-function renderDisorderChart(data) {
-    const counts = {};
-    data.forEach(d => counts[d.TM_Disorder] = (counts[d.TM_Disorder] || 0) + 1);
-    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 10);
-    new Chart(document.getElementById('disorderChart'), {
-        type: 'bar',
-        data: { labels: sorted.map(x => x[0]), datasets: [{ data: sorted.map(x => x[1]), backgroundColor: '#7a5c8a' }] },
-        options: { indexAxis: 'y' }
-    });
-}
-
-function renderIchiBars(data) {
-    const stats = {};
-    data.forEach(d => {
-        const key = d['Main complaint'];
-        if(!stats[key]) stats[key] = { total: 0, codes: {} };
-        stats[key].total++;
-        stats[key].codes[d.ICHI_Code] = (stats[key].codes[d.ICHI_Code] || 0) + 1;
-    });
-    const container = document.getElementById('ichiBars');
-    container.innerHTML = '';
-    Object.entries(stats).slice(0, 8).forEach(([comp, s]) => {
-        const pct = ((Math.max(...Object.values(s.codes)) / s.total) * 100).toFixed(1);
-        container.innerHTML += `<div class="hbar-row"><div class="hbar-label">${comp}</div><div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div><div class="hbar-val">${pct}%</div></div>`;
+        data: { labels: countries, datasets: [{ label: 'Ratio', data: vals, backgroundColor: '#4a7c8e' }]}
     });
 }
 </script>
-
-
-
 </body>
 </html>
