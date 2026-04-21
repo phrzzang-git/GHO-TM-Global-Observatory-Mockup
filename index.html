@@ -35,7 +35,7 @@
 <div id="loading">Synchronized with Real-time MDS Repository...</div>
 
 <div class="masthead">
-    <h1>TM Global Observatory <span style="font-weight: 300; font-size: 18px;">hello hrp</span></h1>
+    <h1>TM Global Observatory <span style="font-weight: 300; font-size: 18px;">hello hrp 2</span></h1>
 </div>
 
 <div class="body-wrap">
@@ -79,9 +79,9 @@
 </div>
 
 <script>
-// 1. 설정: 본인의 구글 앱스 스크립트 URL
 const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
 
+// 차트 객체 전역 저장소
 let mainAnnualChart = null;
 let subCharts = { radar: null, icd: null, disorder: null, pattern: null };
 
@@ -94,8 +94,8 @@ async function initDashboard() {
         document.getElementById('loading').style.display = 'none';
         renderDashboard(data);
     } catch (err) {
-        document.getElementById('loading').innerText = "Connection Error. Check URL or Console.";
-        console.error("Fetch Error:", err);
+        document.getElementById('loading').innerText = "Data Connection Error.";
+        console.error(err);
     }
 }
 
@@ -103,70 +103,54 @@ function renderDashboard(data) {
     updateKPIs(data);
     renderOpdIpdChart(data);
     renderGpiAgeChart(data);
-    renderAnnualInteractiveChart(data); // 섹션 03 실행
+    renderAnnualInteractiveChart(data); // 03 섹션 실행
 }
 
 /**
- * 날짜에서 연도를 안전하게 뽑아내는 헬퍼 함수
- */
-function getYearSafe(dateVal) {
-    if (!dateVal) return null;
-    const d = new Date(dateVal);
-    // 날짜 객체 생성 성공 시
-    if (!isNaN(d.getTime())) return d.getFullYear();
-    // 실패 시 문자열에서 숫자 4자리 추출 시도 (예: 2024.01.01 등)
-    const match = dateVal.toString().match(/\d{4}/);
-    return match ? parseInt(match[0]) : null;
-}
-
-/**
- * [섹션 03] 연도별 Unique Patients 및 상호작용 차트
+ * 03. Annual Patient Trends & Interaction (버그 수정 버전)
  */
 function renderAnnualInteractiveChart(data) {
     const years = [2022, 2023, 2024, 2025, 2026];
-    
-    // 데이터에서 국가명을 동적으로 추출 (CountryA~E 자동 감지)
     const countries = [...new Set(data.map(d => d.Country))].filter(c => c).sort();
     const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'];
+
+    // 날짜에서 연도 추출 (2024-04-21 형식 대응)
+    const getYear = (dateStr) => {
+        if (!dateStr) return null;
+        return new Date(dateStr).getFullYear();
+    };
 
     const datasets = countries.map((country, idx) => ({
         type: 'bar',
         label: country,
         data: years.map(year => {
-            // 해당 국가와 연도에 맞는 데이터 필터링
-            const matches = data.filter(d => 
-                d.Country === country && 
-                getYearSafe(d['Visit Date']) === year
-            );
-            // Patient_ID 기준 고유 환자 수 계산
+            const matches = data.filter(d => d.Country === country && getYear(d['Visit Date']) === year);
             return new Set(matches.map(d => d.Patient_ID)).size;
         }),
         backgroundColor: colors[idx % colors.length],
         barPercentage: 0.7
     }));
 
-    // 평균선 계산
     const annualAverages = years.map(year => {
-        const yearData = data.filter(d => getYearSafe(d['Visit Date']) === year);
+        const yearData = data.filter(d => getYear(d['Visit Date']) === year);
         const uniqueTotal = new Set(yearData.map(d => d.Patient_ID)).size;
         return uniqueTotal / (countries.length || 1);
     });
 
     datasets.push({
         type: 'line',
-        label: 'Global Average',
+        label: 'Average',
         data: annualAverages,
         borderColor: '#1c1b18',
         borderWidth: 3,
         pointRadius: 6,
-        pointBackgroundColor: '#f0e8d0',
+        pointHoverRadius: 10,
         fill: false,
         tension: 0,
         order: -1
     });
 
-    const ctx = document.getElementById('annualTrendChart');
-    if (!ctx) return;
+    const ctx = document.getElementById('annualTrendChart').getContext('2d');
     if (mainAnnualChart) mainAnnualChart.destroy();
 
     mainAnnualChart = new Chart(ctx, {
@@ -175,17 +159,20 @@ function renderAnnualInteractiveChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             onClick: (e, elements) => {
+                // 클릭 버그 수정: 클릭된 지점의 '연도'를 정확히 추출
                 if (elements.length > 0) {
-                    const idx = elements[0].index;
-                    const selectedYear = years[idx];
+                    const index = elements[0].index;
+                    const selectedYear = years[index];
                     updateSubCharts(data, selectedYear);
                 }
             },
-            scales: { y: { beginAtZero: true } }
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }
+            }
         }
     });
 
-    // 초기 상태: 전체 데이터 표시
+    // 초기 실행 (전체 데이터)
     updateSubCharts(data, "Total");
 }
 
@@ -193,22 +180,23 @@ function updateSubCharts(data, year) {
     const labelElem = document.getElementById('selected-year-label');
     if (labelElem) labelElem.innerText = year === "Total" ? "All Years" : "Year: " + year;
 
+    // 필터링 로직: 연도 매칭
     const filtered = year === "Total" 
         ? data 
-        : data.filter(d => getYearSafe(d['Visit Date']) === year);
+        : data.filter(d => d['Visit Date'] && new Date(d['Visit Date']).getFullYear() === year);
 
+    // 하위 차트 렌더링
     renderRadar(filtered);
     renderSubBar(filtered, 'ICD11_Code', 'subIcdChart', '#4a7c8e');
     renderSubBar(filtered, 'TM_Disorder', 'subDisorderChart', '#7a5c8a');
     renderSubBar(filtered, 'TM_Pattern', 'subPatternChart', '#6b8f5e');
 }
 
-// --- 나머지 Radar, SubBar, KPI 함수들은 이전과 동일하게 유지 ---
 function renderRadar(fData) {
     const counts = {};
     fData.forEach(d => { if(d.Modality) counts[d.Modality] = (counts[d.Modality] || 0) + 1; });
-    const ctx = document.getElementById('modalityRadarChart');
-    if(subCharts.radar) subCharts.radar.destroy();
+    const ctx = document.getElementById('modalityRadarChart').getContext('2d');
+    if (subCharts.radar) subCharts.radar.destroy();
     subCharts.radar = new Chart(ctx, {
         type: 'radar',
         data: {
@@ -223,8 +211,8 @@ function renderSubBar(fData, field, canvasId, color) {
     const counts = {};
     fData.forEach(d => { if(d[field]) counts[d[field]] = (counts[d[field]] || 0) + 1; });
     const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
-    const ctx = document.getElementById(canvasId);
-    if(subCharts[canvasId]) subCharts[canvasId].destroy();
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (subCharts[canvasId]) subCharts[canvasId].destroy();
     subCharts[canvasId] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -235,6 +223,7 @@ function renderSubBar(fData, field, canvasId, color) {
     });
 }
 
+// 나머지 KPI 및 기본 차트 함수들 (기존과 동일)
 function updateKPIs(data) {
     const total = data.length;
     const female = data.filter(d => d.Gender === 'Female').length;
