@@ -1,1276 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TM Global MDS · Expert Analytics v2</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:       #f7f6f3;
-  --bg2:      #eeecea;
-  --surface:  #ffffff;
-  --border:   #d8d5d0;
-  --border2:  #c4c1bb;
-  --ink:      #1c1b18;
-  --ink-mid:  #4a4843;
-  --ink-dim:  #8a8880;
-  --ink-xdim: #b0aea9;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TM Global MDS · Live Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f7f6f3; --bg2: #eeecea; --surface: #ffffff; --border: #d8d5d0;
+            --border2: #c4c1bb; --ink: #1c1b18; --ink-mid: #4a4843; --ink-dim: #8a8880;
+            --ink-xdim: #b0aea9; --c-blue: #4a7c8e; --c-purple: #7a5c8a; --c-green: #6b8f5e;
+        }
 
-  /* Monochrome accent system — one warm near-black, one mid-gray, white */
-  --a1: #1c1b18;   /* primary emphasis */
-  --a2: #5a5855;   /* secondary */
-  --a3: #9a9894;   /* tertiary / muted */
-  --a-line: #c4c1bb;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; line-height: 1.6; }
 
-  /* Status — minimal, muted */
-  --warn-bg:  #f5f0e8;
-  --warn-bd:  #d4c8a8;
-  --warn-tx:  #6b5a2a;
-  --info-bg:  #eef0f4;
-  --info-bd:  #b8c0cc;
-  --info-tx:  #2a3a50;
-  --crit-bg:  #f4eeee;
-  --crit-bd:  #d0b8b8;
-  --crit-tx:  #5a2222;
+        /* Banner & Header */
+        .sim-banner { background: var(--ink); color: #f7f6f3; padding: 10px 48px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; display: flex; align-items: center; gap: 10px; }
+        .sim-dot { width: 8px; height: 8px; background: #f0e8d0; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-  /* Chart palette — 6 tones of the same ink */
-  --c1: #1c1b18;
-  --c2: #3e3c38;
-  --c3: #5f5d58;
-  --c4: #7f7d78;
-  --c5: #9f9d98;
-  --c6: #bfbdb8;
-}
+        .masthead { background: var(--surface); border-bottom: 1px solid var(--border); padding: 30px 48px; }
+        .masthead h1 { font-size: 24px; font-weight: 600; }
+        .central-message { background: var(--ink); color: #f7f6f3; padding: 20px 48px; font-size: 15px; border-left: 4px solid #f0e8d0; }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+        /* Layout */
+        .body-wrap { max-width: 1400px; margin: 0 auto; padding: 20px 40px; }
+        .section-head { border-bottom: 1px solid var(--border2); margin: 30px 0 20px; padding-bottom: 10px; display: flex; align-items: baseline; gap: 15px; }
+        .section-head h2 { font-size: 18px; }
 
-body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  line-height: 1.65;
-}
+        .grid { display: grid; gap: 20px; margin-bottom: 20px; }
+        .g2 { grid-template-columns: 1fr 1fr; }
+        .g3 { grid-template-columns: repeat(3, 1fr); }
 
-/* ── SIMULATION WATERMARK BANNER ── */
-.sim-banner {
-  background: var(--ink);
-  color: #f7f6f3;
-  padding: 9px 48px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-}
-.sim-banner .sim-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: #f7f6f3;
-  opacity: 0.5;
-  flex-shrink: 0;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
-.sim-banner strong { color: #f0e8d0; }
+        /* Card & KPI */
+        .card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 4px; }
+        .card-title { font-weight: 600; margin-bottom: 15px; font-size: 14px; }
+        
+        .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-top: 3px solid var(--ink); }
+        .kpi .kv { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 500; display: block; }
+        .kpi .kl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
 
-/* ── MASTHEAD ── */
-.masthead {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 30px 48px 26px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 32px;
-}
+        /* Loading Overlay */
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; }
 
-.masthead-left h1 {
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  color: var(--ink);
-  line-height: 1.1;
-}
-
-.masthead-left .tagline {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-top: 6px;
-}
-
-/* ── CENTRAL MESSAGE ── */
-.central-message {
-  background: var(--ink);
-  color: #f7f6f3;
-  padding: 20px 48px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.central-message .cm-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ink-xdim);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.central-message .cm-text {
-  font-size: 15px;
-  font-weight: 500;
-  color: #f7f6f3;
-  border-left: 2px solid #f0e8d0;
-  padding-left: 16px;
-  line-height: 1.4;
-}
-.central-message .cm-text em {
-  font-style: normal;
-  color: #f0e8d0;
-}
-
-.masthead-stats {
-  display: flex;
-  gap: 28px;
-  align-items: flex-end;
-}
-
-.mstat { text-align: right; }
-.mstat .v {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--ink);
-  display: block;
-  line-height: 1;
-}
-.mstat .l {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--ink-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 3px;
-}
-
-/* ── NAV ── */
-.sticky-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-}
-
-.sticky-nav a {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  padding: 11px 20px;
-  text-decoration: none;
-  white-space: nowrap;
-  border-right: 1px solid var(--border);
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-.sticky-nav a:hover { color: var(--ink); background: var(--bg); }
-.sticky-nav a.active { color: var(--ink); border-bottom-color: var(--ink); }
-
-/* ── BODY ── */
-.body-wrap { max-width: 1440px; margin: 0 auto; padding: 0 40px 60px; }
-
-/* ── SECTION HEADER ── */
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin: 40px 0 18px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border2);
-}
-.section-head .num {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--ink-dim);
-  letter-spacing: 1px;
-}
-.section-head h2 {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.section-head .desc {
-  font-size: 11px;
-  color: var(--ink-dim);
-  font-style: italic;
-  margin-left: auto;
-}
-
-/* ── GRID ── */
-.grid { display: grid; gap: 16px; margin-bottom: 16px; }
-.g2  { grid-template-columns: 1fr 1fr; }
-.g3  { grid-template-columns: 1fr 1fr 1fr; }
-.g12 { grid-template-columns: 1fr 2fr; }
-.g21 { grid-template-columns: 2fr 1fr; }
-
-/* ── CARD ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 20px 22px;
-}
-
-.card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  margin-bottom: 2px;
-}
-.card-sub {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--ink-dim);
-  margin-bottom: 14px;
-}
-
-/* ── KPI STRIP ── */
-.kpi-strip { display: grid; gap: 12px; margin-bottom: 16px; }
-.kpi-strip-5 { grid-template-columns: repeat(5, 1fr); }
-.kpi-strip-4 { grid-template-columns: repeat(4, 1fr); }
-
-.kpi {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 16px 18px;
-  position: relative;
-}
-
-/* Core KPI — no accent color */
-.kpi .kv {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 24px;
-  font-weight: 500;
-  color: var(--ink);
-  line-height: 1;
-  margin-bottom: 5px;
-}
-.kpi .kl {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--ink-dim);
-}
-.kpi .ks {
-  font-size: 11px;
-  color: var(--ink-mid);
-  margin-top: 4px;
-}
-
-/* Priority KPIs — top border accent */
-.kpi.priority { border-top: 2px solid var(--ink); }
-.kpi.priority .kv { font-size: 26px; }
-
-/* ── PRIORITY LABEL ── */
-.priority-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--border2);
-}
-
-/* ── TAGS ── */
-.tag {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 2px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  border: 1px solid;
-}
-.tag-dark   { background: var(--ink);   color: #f7f6f3; border-color: var(--ink); }
-.tag-mid    { background: var(--bg2);   color: var(--ink-mid); border-color: var(--border); }
-.tag-warn   { background: var(--warn-bg); color: var(--warn-tx); border-color: var(--warn-bd); }
-.tag-info   { background: var(--info-bg); color: var(--info-tx); border-color: var(--info-bd); }
-.tag-crit   { background: var(--crit-bg); color: var(--crit-tx); border-color: var(--crit-bd); }
-
-/* ── ALERT ── */
-.alert {
-  padding: 12px 16px;
-  border-radius: 3px;
-  font-size: 12px;
-  margin-bottom: 14px;
-  line-height: 1.6;
-}
-.alert-warn { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn-tx); }
-.alert-info { background: var(--info-bg); border: 1px solid var(--info-bd); color: var(--info-tx); }
-.alert-crit { background: var(--crit-bg); border: 1px solid var(--crit-bd); color: var(--crit-tx); }
-.alert strong { font-weight: 600; }
-
-/* ── HORIZONTAL BAR ── */
-.hbar-wrap { margin-top: 4px; }
-.hbar-row  { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-.hbar-label { width: 160px; font-size: 11px; color: var(--ink-mid); text-align: right; flex-shrink: 0; }
-.hbar-track { flex: 1; height: 5px; background: var(--bg2); border-radius: 1px; overflow: hidden; }
-.hbar-fill  { height: 100%; border-radius: 1px; background: var(--ink); }
-.hbar-val   { width: 52px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim); }
-
-/* ── TABLE ── */
-.ind-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.ind-table thead th {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--ink-dim);
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border2);
-  background: var(--bg);
-}
-.ind-table tbody tr { border-bottom: 1px solid var(--border); }
-.ind-table tbody tr:hover { background: var(--bg); }
-.ind-table td { padding: 9px 12px; color: var(--ink-mid); vertical-align: top; }
-.ind-table td:first-child { color: var(--ink); font-weight: 500; }
-.ind-table td.mono { font-family: 'IBM Plex Mono', monospace; color: var(--ink-mid); }
-
-/* ── INDICATOR ROADMAP ── */
-.roadmap {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-.roadmap-cell {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 14px 16px;
-}
-.roadmap-cell .rc-phase {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  margin-bottom: 8px;
-}
-.roadmap-cell.current { border-top: 2px solid var(--ink); }
-.roadmap-cell.next    { border-top: 2px solid var(--border2); }
-.roadmap-cell.future  { border-top: 2px dashed var(--border); opacity: 0.7; }
-.roadmap-item { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; font-size: 12px; color: var(--ink-mid); }
-.roadmap-dot  { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-dim); flex-shrink: 0; margin-top: 6px; }
-
-/* ── FOOTNOTE ── */
-.footnote {
-  margin-top: 48px;
-  padding: 16px 0;
-  border-top: 1px solid var(--border);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--ink-xdim);
-  letter-spacing: 0.5px;
-  text-align: center;
-}
-
-@media (max-width: 1000px) {
-  .g2,.g3,.g12,.g21 { grid-template-columns: 1fr; }
-  .kpi-strip-4,.kpi-strip-5 { grid-template-columns: repeat(2,1fr); }
-  .masthead { flex-direction: column; gap: 16px; }
-  .masthead-stats { flex-wrap: wrap; }
-  .roadmap { grid-template-columns: 1fr; }
-}
-/* 레이아웃 핵심 설정 */
-  .dashboard-wrapper {
-    display: flex;       /* 가로 병렬 배치 */
-    gap: 20px;           /* 카드 사이 간격 */
-    align-items: stretch; 
-  }
-
-  /* 왼쪽: 큰 차트 비율 */
-  .main-column {
-    flex: 2;             /* 오른쪽보다 넓게 설정 (비율 조정 가능) */
-  }
-
-  /* 오른쪽: 세로 정렬 */
-  .side-column {
-    flex: 1;             /* 왼쪽보다 좁게 설정 */
-    display: flex;
-    flex-direction: column; /* 카드를 위아래로 쌓음 */
-    gap: 20px;           /* 카드 사이 간격 */
-  }
-
-  /* 카드 내부 캔버스가 꽉 차도록 설정 */
-  .card {
-    height: 100%;
-    margin-bottom: 0 !important; /* 기존 마진 제거 */
-  }
-</style>
+        /* Horizontal Bars */
+        .hbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .hbar-label { width: 140px; font-size: 11px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hbar-track { flex: 1; height: 8px; background: var(--bg2); border-radius: 2px; }
+        .hbar-fill { height: 100%; background: var(--ink); border-radius: 2px; }
+        .hbar-val { width: 40px; font-size: 11px; color: var(--ink-dim); font-family: 'IBM Plex Mono'; }
+    </style>
 </head>
 <body>
 
-<!-- SIMULATION WATERMARK BANNER -->
+<div id="loading">CONNECTING TO GOOGLE SHEETS...</div>
+
 <div class="sim-banner">
-  <div class="sim-dot"></div>
-  <span><strong>SIMULATION DATA</strong> · This dashboard uses statistically generated data. All inter-country uniformities are simulation artifacts. Not for policy citation without real MDS data.</span>
+    <div class="sim-dot"></div>
+    <span><strong>LIVE DATA</strong> · Synchronized with Google Sheets MDS Repository</span>
 </div>
 
-<!-- MASTHEAD -->
 <div class="masthead">
-  <div class="masthead-left">
     <h1>Traditional Medicine Global Observatory</h1>
-    <div class="tagline"></div>
-  </div>
+    <p style="color: var(--ink-dim); font-family: 'IBM Plex Mono'; font-size: 10px; margin-top: 5px;">ICD-11 TM & ICHI ANALYTICS ENGINE</p>
 </div>
 
 <div class="central-message">
-   <div class="cm-text">Traditional medicine is now <em>measurable</em> — ICD-11 TM and ICHI based MDS-RHIS enables cross-country comparison, coding validation, and evidence-grade data collection at scale.</div>
+    Traditional medicine data collected via <strong>MDS-RHIS</strong> pilot (Brazil, Nepal, Malaysia, Sri Lanka, Mauritius).
 </div>
-  
-<!-- STICKY NAV -->
-<nav class="sticky-nav">
-  <a href="#s1" class="active">01 · Service Access</a>
-  <a href="#s2">02 · TM Morbidity</a>
-</nav>
 
 <div class="body-wrap">
-
-<!-- ═══════════════ S1: SERVICE ACCESS ═══════════════ -->
-<div id="s1">
-  <div class="section-head">
-    <span class="num">01</span>
-    <h2>Service Utilization & Access - How are patients accessing TM services?</h2>
-    <span class=""></span>
-  </div>
-
-<b>Gender, Age and OPD/IPD</b>
-  <div class="priority-label"></div>
-  <div class="kpi-strip kpi-strip-4">
-<div class="kpi priority">
-      <div class="kv">10 : 9</div>
-      <div class="kl">Male:Female</div>
-      <div class="ks">Calculated as the ratio of female-to-male service utilization rates</div>
-    </div>
-    <div class="kpi">
-      <div class="kv">~0.9</div>
-      <div class="kl">F/M Utilization Ratio</div>
-      <div class="ks">Simulation artifact — real TM typically 1.2–1.5</div>
-    </div>
-<div class="kpi priority">
-      <div class="kv">19 : 1</div>
-      <div class="kl">OPD/IPD Ratio</div>
-      <div class="ks">Brazil·Nepal·Sri Lanka·Malaysia·Mauritius·S.Africa</div>
-    </div>
-    <div class="kpi priority">
-      <div class="kv">22.3%</div>
-      <div class="kl">Elderly Burden Index</div>
-      <div class="ks">70+ age group share of all visits</div>
+    <div class="section-head">
+        <h2 id="s1">01 · Service Access & Demographics</h2>
     </div>
 
-  </div>
-
-  <div class="grid g2">
-<div class="chart-container">
-<h3>Gender Parity Index (GPI) in Health Access</h3>
-    <canvas id="gpiChart"></canvas>
-</div>
-    <div class="card">
-      <div class="card-title">OPD/IPD Ratio by Country</div>
-      <div class="card-sub">Lower ratio = higher inpatient dependency</div>
-      <canvas id="opdIpdRatioChart" height="230"></canvas>
-    </div>
-    <div class="card">
-      <div class="card-title">Gender-Specific Condition Profile</div>
-      <div class="card-sub">Top 5 conditions by gender patterns</div>
-      <canvas id="genderConditionChart" height="250"></canvas>
-    </div>
-    <div class="card">
-      <div class="card-title">Elderly (70+) Burden & IPD Composition</div>
-      <div class="card-sub">% of IPD visits attributable to 70+ age group vs. overall 70+ share</div>
-      <canvas id="elderlyChart" height="230"></canvas>
-    </div>
-</div>
-
-<div id="">
-<b>Service access</b>
-  <div class="priority-label"></div>
-  <div class="kpi-strip kpi-strip-4">
-    <div class="kpi">
-      <div class="kv">52,069</div>
-      <div class="kl">Avg Patients by Institution (Unique)</div>
-      <div class="ks">Range: 47,426 – 70,190</div>
-    </div>
-    <div class="kpi priority">
-      <div class="kv">3.69</div>
-      <div class="kl">Visits per Patient</div>
-      <div class="ks">Sim artifacts</div>
-    </div>
-  </div>
-
-<div class="grid g2">
-    <div class="chart-card">
-        <h3>Unique Patients by Year</h3>
-        <p>Growth Trend of Unique Patients Relative to Total Visits</p>
-        <canvas id="chartA5"></canvas>
+    <div class="kpi-strip">
+        <div class="kpi"><span class="kv" id="kpi-total">-</span><span class="kl">Total Visits</span></div>
+        <div class="kpi"><span class="kv" id="kpi-gpi">-</span><span class="kl">Gender Parity (F/M)</span></div>
+        <div class="kpi"><span class="kv" id="kpi-opdipd">-</span><span class="kl">OPD/IPD Ratio</span></div>
+        <div class="kpi"><span class="kv" id="kpi-elderly">-</span><span class="kl">Elderly Burden %</span></div>
     </div>
 
-    <div class="chart-card">
-        <h3>Visits per Patient (Depth of Engagement)</h3>
-        <p>Average Number of TM Service Uses Per Patient, by Country수</p>
-        <canvas id="chartA6"></canvas>
-    </div>
-</div>
-<div class="priority-label"></div>
-<div class="grid g2">
-    <div class="chart-card">
-        <h3>Average Visits per ICD-11 Condition</h3>
-        <canvas id="chartA" style="max-height: 300px;"></canvas>
-    </div>
-    <div class="chart-card">
-        <h3>Related Top TM Disorders)</h3>
-        <canvas id="chartB"></canvas>
-    </div>
-<div class="grid g1">
-    <p class="instruction">💡 Clicking a bar on the upper chart updates the detailed TM data right.</p>
-</div>
-    <div class="chart-card">
-        <h3>Related Top TM Patterns</h3>
-        <canvas id="chartC"></canvas>
-    </div>
-</div>
-
-<b>TM Modalities</b>
-  <div class="kpi-strip kpi-strip-4">
-    <div class="kpi">
-      <div class="kv">0.95</div>
-      <div class="kl">Global Modality Diversity Average</div>
-      <div class="ks">Shannon entropy</div>
-    </div>
-  </div>
-
-  <div class="grid g2">
-      <div class="card">
-      <div class="card-title">TM Modality Diversity by Country</div>
-      <div class="card-sub">Higher = more balanced multi-modality system (max 1.099 for 3 equal)</div>
-      <canvas id="shannonChart" height="230"></canvas>
-    </div>
-  <div class="card">
-      <div class="card-title">Modality–Condition Alignment</div>
-      <div class="card-sub">Most common condition per TM modality</div>
-      <table class="ind-table">
-        <thead><tr><th>TM Modality</th><th>Top Condition</th><th>Scope</th></tr></thead>
-        <tbody>
-          <tr><td>Ayurveda</td><td>Dysmenorrhea</td><td><span class="tag tag-mid">5 countries</span></td></tr>
-          <tr><td>Homeopathy</td><td>Sciatica</td><td><span class="tag tag-mid">4 countries</span></td></tr>
-          <tr><td>TCM</td><td>Irritable Bowel Syndrome</td><td><span class="tag tag-mid">3 countries</span></td></tr>
-          <tr><td>Siddha</td><td>Irritable Bowel Syndrome</td><td><span class="tag tag-info">Sri Lanka</span></td></tr>
-          <tr><td>Malay Traditional</td><td>Constipation</td><td><span class="tag tag-info">Malaysia</span></td></tr>
-          <tr><td>Sowa Rigpa</td><td>Menopausal symptoms</td><td><span class="tag tag-info">Nepal</span></td></tr>
-          <tr><td>African TM</td><td>Type 2 Diabetes</td><td><span class="tag tag-info">South Africa</span></td></tr>
-          <tr><td>Deshiya Chikitsa</td><td>Asthma</td><td><span class="tag tag-info">Sri Lanka</span></td></tr>
-          <tr><td>Phytotherapy</td><td>Neck pain</td><td><span class="tag tag-info">Brazil</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-
-<!-- ═══════════════ S2: Top 5 Conditions ═══════════════ -->
-<div id="s2">
-  <div class="section-head">
-    <span class="num">02</span>
-    <h2>Top 5 Conditions Driving TM Morbidity - What conditions are driving TM morbidity?</h2>
-    </div>
-
-<b>TM Morbidity Profile</b>
-     <div class="grid g1"> 
-       <div class="chart-card">
-            <h3>Top 10 Standard ICD-11 Conditions by Age Group (Total Volume)</h3>
-            <div class="main-box">
-                <canvas id="morbidityCanvas", height=500></canvas>
-            </div>
+    <div class="grid g2">
+        <div class="card">
+            <div class="card-title">OPD/IPD Ratio by Country</div>
+            <canvas id="opdIpdChart" height="200"></canvas>
         </div>
-<div class="instruction-badge">💡 Clicking a bar on ICD codes update the detailed TM data follows</div>
-	</div>
+        <div class="card">
+            <div class="card-title">Gender Distribution by Age Group</div>
+            <canvas id="gpiAgeChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <div class="section-head">
+        <h2 id="s2">02 · TM Morbidity (ICD-11 Chapter 26)</h2>
+    </div>
 
     <div class="grid g3">
-        <div class="chart-card">
-            <h3>Top 10 TM Disorders</h3>
-            <div class="sub-box">
-                <canvas id="disorderCanvas"></canvas>
-            </div>
+        <div class="card">
+            <div class="card-title">Top 10 TM Disorders</div>
+            <canvas id="disorderChart" height="350"></canvas>
         </div>
-        <div class="chart-card">
-            <h3>Top 10 TM Patterns</h3>
-            <div class="sub-box">
-                <canvas id="patternCanvas"></canvas>
-            </div>
+        <div class="card">
+            <div class="card-title">Top 10 TM Patterns</div>
+            <canvas id="patternChart" height="350"></canvas>
         </div>
-        <div class="chart-card">
-            <h3>TM Modalities(%)</h3>
-            <div class="sub-box">
-                <canvas id="modalityCanvas"></canvas>
-            </div>
-  	</div>
-     </div>
-
-<div class="priority-label"></div>
-<b>Disease Specific Analysis </b> - Optional
-  <div class="kpi-strip kpi-strip-5">
-    <div class="kpi priority">
-      <div class="kv">25.0%</div>
-      <div class="kl">MSK Burden Index</div>
-      <div class="ks">1 in 4 visits — musculoskeletal</div>
-    </div>
-    <div class="kpi">
-      <div class="kv">5.0%</div>
-      <div class="kl">MSK in IPD</div>
-      <div class="ks">MSK share among inpatient visits</div>
-    </div>
-    <div class="kpi priority">
-      <div class="kv">30.0%</div>
-      <div class="kl">NCD Utilization Rate</div>
-      <div class="ks">HTN · DM · Asthma · Stroke · RA · CFS</div>
-    </div>
-    <div class="kpi">
-      <div class="kv">10.1%</div>
-      <div class="kl">Female Specific Condition</div>
-      <div class="ks">Dysmenorrhea + Menopausal / all visits</div>
-    </div>
-  </div>
-
-<b>Continuity of Care</b>
-  <div class="kpi-strip kpi-strip-5">
-    <div class="kpi priority">
-      <div class="kv">41.4%</div>
-      <div class="kl">Visit Concentration Index</div>
-      <div class="ks">Based on the Lorenz curve, chronic disease management is concentrated on the top 20% of patients (steep slope)</div>
-    </div>
-    <div class="kpi priority">
-      <div class="kv">85.6%</div>
-      <div class="kl">Patient Revisit Rate (Breadth of Participation)</div>
-      <div class="ks">The percentage of unique patients who have revisited at least once</div>
-    </div>
-    <div class="kpi priority">
-      <div class="kv">96.7%</div>
-      <div class="kl">Visit Revisit Rate (Depth of Engagement)</div>
-      <div class="ks">The proportion of total visits accounted for by returning patients.</div>
-    </div>
-
-  </div>
-
-<div class="container">
-   <div class="grid g3">
-        <div class="chart-card">
-            <h3>Visit Concentration Index</h3>
-            <div class="chart-value">41.4%</div>
-            <div class="chart-container">
-                <canvas id="paretoChart"></canvas>
-            </div>
-        </div>
-
-        <div class="chart-card">
-            <h3>High-Frequency TM User Rate</h3>
-            <div class="chart-value">39.2%</div>
-            <div class="chart-container">
-                <canvas id="hfurChart"></canvas>
-            </div>
-        </div>
-
-        <div class="chart-card">
-            <h3>Continuity of Care Index</h3>
-            <div class="chart-value">0.591 <span style="font-size: 0.9rem; font-weight: 400; color: var(--neutral);">(Mean)</span></div>
-            <div class="chart-container">
-                <canvas id="cciChart"></canvas>
-            </div>
+        <div class="card">
+            <div class="card-title">ICHI Intervention Consistency</div>
+            <div id="ichiBars"></div>
         </div>
     </div>
-</div>
-
-
-  <div class="priority-label"></div>
-<b>ICHI Interventions</b> - should be updated
- <div class="grid g2">
-    <div class="card">
-      <div class="card-title">ICHI Assignment Consistency by Condition</div>
-      <div class="card-sub">% of visits using the modal ICHI code for each condition</div>
-      <div class="hbar-wrap" id="ichiBars"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">ICHI Intervention Diversity per Condition</div>
-      <div class="card-sub">Number of distinct ICHI codes used per condition</div>
-      <canvas id="ichiDiversityChart" height="270"></canvas>
-    </div>
-  </div>
-</div>
-</div>
-</div>
-
-
-<!-- ═══════════════ S8: ROADMAP ═══════════════ -->
-<div id="s8">
-
-
-<div class="footnote">
-  SIMULATION DATASET · seed=42 · 1,800,000 visits · 414,237 unique patients · 24 institutions · 6 countries · 20 conditions <br>
-</div>
-
 </div>
 
 <script>
-Chart.defaults.color = '#8a8880';
-Chart.defaults.borderColor = '#d8d5d0';
-Chart.defaults.font.family = "'IBM Plex Mono', monospace";
-Chart.defaults.font.size = 10.5;
 
-const COUNTRIES = ['Brazil','Nepal','Malaysia','Sri Lanka','Mauritius','S. Africa'];
+const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
 
-// Chart color palette — muted but colorful, works with monochrome UI
-const MONO = ['#4a7c8e','#7a5c8a','#6b8f5e','#c47a3a','#5a7ab8','#b85a5a'];
-const C = {
-  blue:   '#4a7c8e',
-  purple: '#7a5c8a',
-  green:  '#6b8f5e',
-  amber:  '#c47a3a',
-  steel:  '#5a7ab8',
-  rose:   '#b85a5a',
-  teal:   '#3a8a7a',
-  sand:   '#a08040',
-};
-
-const OPTS_BASE = {
-  responsive: true,
-  plugins: { legend: { labels: { color: '#8a8880', boxWidth: 10, padding: 10 } } },
-  scales: {
-    x: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } },
-    y: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } }
-  }
-};
-
-// A1: OPD/IPD Ratio
-new Chart(document.getElementById('opdIpdRatioChart'), {
-  type: 'bar',
-  data: {
-    labels: COUNTRIES,
-    datasets: [{
-      label: 'OPD/IPD Ratio',
-      data: [19.08, 3.0, 18.7, 3.0, 19.02, 19.11],
-      backgroundColor: MONO,
-      borderRadius: 2
-    }]
-  },
-  options: { ...OPTS_BASE,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { ticks: { color: '#8a8880', callback: v => v+':1' }, grid: { color: '#eeecea' },
-           title: { display: true, text: 'OPD visits per 1 IPD visit', color: '#8a8880', font: { size: 10 } } }
+async function initDashboard() {
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        document.getElementById('loading').style.display = 'none';
+        
+        renderDashboard(data);
+    } catch (err) {
+        document.getElementById('loading').innerText = "Error loading data. Check Console.";
+        console.error(err);
     }
-  }
-});
+}
 
-// A2: Elderly
-new Chart(document.getElementById('elderlyChart'), {
-  type: 'bar',
-  data: {
-    labels: COUNTRIES,
-    datasets: [
-      { label: '70+ of all visits', data: [22.31,22.28,22.25,22.31,22.27,22.44], backgroundColor: C.blue, borderRadius: 2 },
-      { label: '70+ of IPD visits', data: [22.1,22.5,22.3,22.3,22.2,23.3], backgroundColor: C.steel, borderRadius: 2 }
-    ]
-  },
-  options: { ...OPTS_BASE,
-    scales: {
-      x: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { min: 21, max: 24, ticks: { color: '#8a8880', callback: v => v+'%' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
+function renderDashboard(data) {
+    // 1. KPI 계산
+    const total = data.length;
+    const female = data.filter(d => d.Gender === 'Female').length;
+    const male = data.filter(d => d.Gender === 'Male').length;
+    const ipd = data.filter(d => d.Visit_Type === 'IPD').length;
+    const opd = total - ipd;
+    
+    // 고령층 (70세 이상) 계산
+    const elderlyCount = data.filter(d => {
+        const age = 2026 - new Date(d['Date of birth']).getFullYear();
+        return age >= 70;
+    }).length;
 
+    document.getElementById('kpi-total').innerText = total.toLocaleString();
+    document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
+    document.getElementById('kpi-opdipd').innerText = (opd / (ipd || 1)).toFixed(1) + ":1";
+    document.getElementById('kpi-elderly').innerText = ((elderlyCount / total) * 100).toFixed(1) + "%";
 
-// C: ICHI bars
-const ichiData = [
-  ['Neck pain',33.4],['Low back pain',33.4],['Sciatica',33.4],['Dysmenorrhea',33.6],
-  ['IBS',50.0],['Constipation',50.0],['Anxiety',50.1],['Migraine',50.1],['OA Knee',50.1],
-  ['Dyspepsia',50.1],['Asthma',50.2],['Eczema',50.2],['Menopausal',50.2],
-  ['RA',50.2],['CFS',50.2],['Stroke rehab',50.2],['Insomnia',50.3],
-  ['Hypertension',100.0],['T2 Diabetes',100.0]
-];
-const ichiContainer = document.getElementById('ichiBars');
-ichiData.forEach(([name, val]) => {
-  const opacity = val <= 40 ? '1' : val >= 100 ? '0.5' : '0.75';
-  ichiContainer.innerHTML += `
-    <div class="hbar-row">
-      <div class="hbar-label">${name}</div>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${val}%; opacity:${opacity}"></div></div>
-      <div class="hbar-val">${val}%</div>
-    </div>`;
-});
-
-// C: ICHI diversity
-new Chart(document.getElementById('ichiDiversityChart'), {
-  type: 'bar',
-  data: {
-    labels: ['Neck pain','Sciatica','Low back pain','Dysmenorrhea','Others ×16','Hypertension','T2 Diabetes'],
-    datasets: [{
-      label: 'Distinct ICHI codes used',
-      data: [3,3,3,3,2,1,1],
-      backgroundColor: [C.rose, C.rose, C.rose, C.rose, C.amber, C.green, C.green],
-      borderRadius: 3
-    }]
-  },
-  options: { ...OPTS_BASE,
-    indexAxis: 'y',
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { max: 4, ticks: { stepSize: 1, color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
-
-// E1: Gender conditions
-new Chart(document.getElementById('genderConditionChart'), {
-  type: 'bar',
-  data: {
-    labels: ['Dysmenorrhea (GA30.0)',' Menopausal symptoms (GA10)',' Female infertility (GA31)',' Lumbar disc herniation with sciatica (ME84.2)',' Osteoarthritis of knee (FA01)',' Cerebral infarction (8B11)',' Spondylosis (FA80)',' Chronic fatigue syndrome (8E49)','Generalized anxiety disorder (6B00)'],
-    datasets: [
-      { label: 'Female', data: [45589,35386,35321,25257,15190,27744,33285,12654,36545], backgroundColor: C.purple, borderRadius: 2 },
-      { label: 'Male',   data: [0,0,0,45134,24577,35304,45137,0,0], backgroundColor: C.blue,   borderRadius: 2 }
-    ]
-  },
-  options: { ...OPTS_BASE,
-    scales: {
-      x: { ticks: { color: '#8a8880', maxRotation: 40, font: { size: 10 } }, grid: { color: '#eeecea' } },
-      y: { ticks: { color: '#8a8880', callback: v => (v/1000).toFixed(0)+'K' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
-
-// F: Shannon
-new Chart(document.getElementById('shannonChart'), {
-  type: 'bar',
-  data: {
-    labels: COUNTRIES,
-    datasets: [{
-      label: 'Shannon H',
-      data: [1.15,0.45,1.4,1.25,0.5,0.75],
-      backgroundColor: MONO,
-      borderRadius: 3
-    }]
-  },
-  options: { ...OPTS_BASE,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { min: 0, max: 1.5,
-           title: { display: true, text: 'Shannon H (max for 3 equal = 1.099)', color: '#8a8880', font: { size: 10 } },
-           ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
-
-// G: B-2
-new Chart(document.getElementById('B-2'), {
-  type: 'bar',
-  data: {
-    labels: ['SE61','SE65','SE64','SE62','SE63','SD72','SE66','SD71','SE60','SE67'],
-    datasets: [{
-      label: 'Distinct ICD11 TM codes used',
-      data: [3.9,3.8,3.2,2.9,1.5,1.2,8,7,4,1],
-      backgroundColor: [C.rose, C.rose, C.rose, C.rose, C.amber,C.amber,C.amber, C.green,C.green, C.green],
-      borderRadius: 3
-    }]
-  },
-  options: { ...OPTS_BASE,
-    indexAxis: 'y',
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { max: 4, ticks: { stepSize: 1, color: '#8a8880' }, grid: { color: '#eeecea' } },
-      y: { ticks: { color: '#8a8880' }, grid: { color: '#eeecea' } }
-    }
-  }
-});
-
-// A-1
-    const ctx = document.getElementById('gpiChart').getContext('2d');
-    const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
-    const gpiData = [0.98, 1.05, 0.92, 0.88, 0.82, 0.75]; // 1.0 기준 GPI 값
-
-    const gpiChart = new Chart(ctx, {
-        type: 'line', // 막대 그래프와 꺾은선 혼합 가능
-        data: {
-            labels: ageGroups,
-            datasets: [{
-                label: 'Gender Parity Index',
-                data: gpiData,
-                backgroundColor: function(context) {
-                    const value = context.dataset.data[context.dataIndex];
-                    return value < 1.0 ? 'rgba(54, 162, 235, 0.6)' : 'rgba(75, 192, 192, 0.6)';
-                },
-                borderColor: function(context) {
-                    const value = context.dataset.data[context.dataIndex];
-                    return value < 1.0 ? 'rgba(54, 162, 235, 1)' : 'rgba(75, 192, 192, 1)';
-                },
-                borderWidth: 2,
-                borderRadius: 5,
-                order: 2
-            },
-            {
-                // 기준선 (Gender Parity Line)
-                label: 'Ideal Parity (1.0)',
-                data: Array(6).fill(1.0),
-                type: 'line',
-                borderColor: '#e74c3c',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                pointRadius: 0,
-                fill: false,
-                order: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    min: 0.5,
-                    max: 1.2,
-                    title: {
-                        display: true,
-                        text: 'GPI Value (Female / Male Rate)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Age Groups'
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            label += context.parsed.y;
-                            if (context.datasetIndex === 0) {
-                                const status = context.parsed.y < 1.0 ? ' (Lower Female Access)' : ' (Higher Female Access)';
-                                label += status;
-                            }
-                            return label;
-                        }
-                    }
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
+    // 2. 국가별 OPD/IPD 차트
+    const countries = [...new Set(data.map(d => d.Country))].sort();
+    const opdIpdVals = countries.map(c => {
+        const cData = data.filter(d => d.Country === c);
+        const o = cData.filter(d => d.Visit_Type === 'OPD').length;
+        const i = cData.filter(d => d.Visit_Type === 'IPD').length;
+        return (o / (i || 1)).toFixed(2);
     });
-// A-6
-    new Chart(document.getElementById('chartA5'), {
-        data: {
-            labels: ['2022', '2023', '2024', '2025', '2026(Projected)'],
-            datasets: [{
-                type: 'line',
-                label: 'Unique Patients',
-                data: [12500, 15800, 21000, 28500, 34000],
-                borderColor: C.blue,
-                backgroundColor: 'transparent',
-                pointRadius: 4,
-                tension: 0.3,
-                zIndex: 2
-            }, {
-                type: 'bar',
-                label: 'Total Encounters',
-                data: [45000, 52000, 68000, 89000, 105000],
-                backgroundColor: 'rgba(49, 130, 206, 0.15)',
-                borderRadius: 5,
-                zIndex: 1
-            }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
-    new Chart(document.getElementById('chartA6'), {
+
+    new Chart(document.getElementById('opdIpdChart'), {
         type: 'bar',
         data: {
-            labels: ['Brazil', 'Vietnam', 'Nepal', 'Malaysia', 'Bhutan', 'Mauritius'],
-            datasets: [{
-                label: 'Avg. Visits/Patient',
-                data: [4.2, 5.8, 3.1, 2.7, 6.5, 3.8],
-                backgroundColor: [C.green, C.green, C.orange, C.orange, C.green, C.orange],
-                borderRadius: 8
-            }]
+            labels: countries,
+            datasets: [{ label: 'Ratio', data: opdIpdVals, backgroundColor: '#4a7c8e' }]
         },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { x: { title: { display: true, text: 'Visits per Person' } } }
-        }
-    });
- //Visit per patient
-const db = {
-        'GA30.0 (Dysmenorrhea)': {
-            disorders: [120, 95, 80, 45, 30], dLabels: ['Uterine Cold', 'Qi Stagnation', 'Blood Stasis', 'Kidney Def.', 'Damp-Heat'],
-            patterns: [210, 185, 140, 90, 65], pLabels: ['SF50 (Liver Qi)', 'SF53 (Blood Stasis)', 'SD71 (Yang Def.)', 'SD70 (Yin Def.)', 'SG21 (Damp-Heat)']
-        },
-        'FA01 (OA Knee)': {
-            disorders: [150, 130, 110, 85, 60], dLabels: ['Joint Bi', 'Bone Bi', 'Wind Bi', 'Cold Bi', 'Damp Bi'],
-            patterns: [190, 160, 145, 110, 80], pLabels: ['SG21 (Damp-Heat)', 'SD71 (Yang Def.)', 'SF53 (Blood Stasis)', 'SG31 (Phlegm)', 'SF54 (Qi Def.)']
-        },
-        '8B11 (Stroke)': {
-            disorders: [180, 140, 110, 95, 70], dLabels: ['Wind Stroke', 'Meridian Stroke', 'Viscera Stroke', 'Qi-Blood Stroke', 'External Wind'],
-            patterns: [220, 190, 165, 130, 105], pLabels: ['SG40 (Internal Wind)', 'SG31 (Phlegm-Stasis)', 'SF50 (Liver Qi)', 'SF54 (Qi Def.)', 'SD70 (Yin Def.)']
-        }
-    };
-
-    // 2. 새로운 그라데이션 컬러 팔레트 생성기
-    function getGradient(ctx, color1, color2) {
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, color1);
-        gradient.addColorStop(1, color2);
-        return gradient;
-    }
-
-    const ctxA = document.getElementById('chartA').getContext('2d');
-    const ctxB = document.getElementById('chartB').getContext('2d');
-    const ctxC = document.getElementById('chartC').getContext('2d');
-
-    // 3. 차트 초기화 및 컬러 적용
-    let chartB = new Chart(ctxB, { 
-        type: 'bar', 
-        data: { labels: [], datasets: [{ label: 'Cases', data: [], backgroundColor: [], borderRadius: 6 }] },
-        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+        options: { plugins: { legend: false } }
     });
 
-    let chartC = new Chart(ctxC, { 
-        type: 'bar', 
-        data: { labels: [], datasets: [{ label: 'Cases', data: [], backgroundColor: [], borderRadius: 6 }] },
-        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
-    });
+    // 3. TM Disorder Top 10 (가로 막대)
+    const disorders = {};
+    data.forEach(d => disorders[d.TM_Disorder] = (disorders[d.TM_Disorder] || 0) + 1);
+    const topDisorders = Object.entries(disorders).sort((a,b) => b[1]-a[1]).slice(0, 10);
 
-    const chartA = new Chart(ctxA, {
+    new Chart(document.getElementById('disorderChart'), {
         type: 'bar',
         data: {
-            labels: Object.keys(db),
-            datasets: [{
-                label: 'Avg. Visits',
-                data: [6.2, 8.5, 12.1],
-                // Chart A: 신뢰의 파란색 (Navy Blue)
-                backgroundColor: ['#2a4365', '#3182ce', '#63b3ed'],
-                borderRadius: 8
-            }]
+            labels: topDisorders.map(x => x[0]),
+            datasets: [{ data: topDisorders.map(x => x[1]), backgroundColor: '#7a5c8a' }]
         },
-        options: {
-            onClick: (evt, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const selectedLabel = chartA.data.labels[index];
-                    updateSubCharts(selectedLabel);
-                }
-            },
-            plugins: { legend: { display: false } }
-        }
+        options: { indexAxis: 'y', plugins: { legend: false } }
     });
 
-    // 4. 업데이트 로직 및 데이터별 그라데이션/멀티 컬러 적용
-    function updateSubCharts(label) {
-        const data = db[label];
-        if (!data) return;
-
-        // Chart B (Disorders): 보라색~자주색 그라데이션 (warm palette)
-        chartB.data.labels = data.dLabels;
-        chartB.data.datasets[0].data = data.disorders;
-        // 각 막대에 다른 색상을 적용하여 다양성 확보
-        chartB.data.datasets[0].backgroundColor = [
-            getGradient(ctxB, '#805ad5', '#553c9a'), // 깊은 보라
-            getGradient(ctxB, '#9f7aea', '#6b46c1'), // 보라
-            getGradient(ctxB, '#b794f4', '#805ad5'), // 밝은 보라
-            getGradient(ctxB, '#d6bcfa', '#9f7aea'), // 연보라
-            getGradient(ctxB, '#e9d8fd', '#b794f4')  // 아주 연보라
-        ];
-        chartB.update();
-
-        // Chart C (Patterns): 초록색~민트색 그라데이션 (cool/natural palette)
-        chartC.data.labels = data.pLabels;
-        chartC.data.datasets[0].data = data.patterns;
-        chartC.data.datasets[0].backgroundColor = [
-            getGradient(ctxC, '#38a169', '#276749'), // 깊은 초록
-            getGradient(ctxC, '#48bb78', '#2f855a'), // 초록
-            getGradient(ctxC, '#68d391', '#38a169'), // 밝은 초록
-            getGradient(ctxC, '#9ae6b4', '#48bb78'), // 연초록
-            getGradient(ctxC, '#c6f6d5', '#68d391')  // 민트 그린
-        ];
-        chartC.update();
-    }
-
-    // 초기 화면 설정
-    updateSubCharts(Object.keys(db)[0]);
-
-//TM Morbidity Profile
-    // 1. 10개 질환별 상세 데이터베이스 (MDS-RHIS 가상 데이터)
-    const tmMorbidityDB = {
-        'GA30.0 (Dysmenorrhea)': { d: [150,130,110,95,80,70,55,40,30,20], p: [210,185,160,140,120,105,90,75,60,45], m: [75,10,5,2,8], dL: ['Uterine Cold','Qi Stagnation','Blood Stasis','Kidney Def','Damp-Heat','Liver Fire','Spleen Weak','Blood Def','Qi Sinking','Essence Loss'], pL: ['SF50','SF53','SD71','SD70','SG21','SF54','SF58','SG31','SG40','SD72'] },
-        'FA01 (OA Knee)': { d: [180,165,140,120,105,90,75,60,45,30], p: [200,180,160,145,130,115,100,85,70,55], m: [30,40,10,10,10], dL: ['Joint Bi','Bone Bi','Wind Bi','Cold Bi','Damp Bi','Fixed Bi','Heat Bi','Empty Bi','Muscle Bi','Vessel Bi'], pL: ['SG21','SD71','SF53','SG31','SF54','SD70','SF50','SF58','SG40','SD72'] },
-        '8B11 (Stroke)': { d: [200,185,170,150,135,115,95,80,65,50], p: [240,215,190,170,150,130,110,95,80,65], m: [45,5,5,30,15], dL: ['Wind Stroke','Meridian','Viscera','Qi-Blood','Ext. Wind','Int. Fire','Phlegm','Qi Collapse','Yin Exh.','Yang Flare'], pL: ['SG40','SG31','SF50','SF54','SD70','SD71','SF53','SF58','SG21','SD72'] },
-        '6B00 (Anxiety)': { d: [165,145,125,105,90,75,60,50,40,30], p: [195,175,155,135,120,105,90,75,60,45], m: [55,25,5,5,10], dL: ['Heart/Spleen','Qi/Phlegm','Gallbladder','Liver Fire','Kidney Yin','Blood Stasis','Mind Dist.','Spirit Leak','Empty Heat','Essence Def'], pL: ['SF50','SD70','SF54','SF58','SG21','SD71','SG31','SF53','SG40','SD72'] },
-        '8E49 (Fatigue)': { d: [170,150,135,120,105,90,80,70,60,50], p: [215,195,175,155,140,125,110,95,80,65], m: [30,50,5,5,10], dL: ['Spleen Def','Kidney Yang','Qi/Blood','Heart Blood','Liver Yin','Lung Qi','Nutritive','Defensive','Triple Burner','Marrow Def'], pL: ['SF54','SD71','SF58','SD70','SF50','SG31','SF53','SG21','SG40','SD72'] },
-        'DA01 (Gastritis)': { d: [145,125,105,90,75,65,55,45,35,25], p: [185,165,145,125,110,95,80,65,55,40], m: [40,15,5,25,15], dL: ['Stomach Cold','Food Stag.','Liver/Stomach','Yin Def.','Qi Def.','Heat Stag.','Blood Stasis','Damp-Heat','Spleen Cold','Acid Flow'], pL: ['SF54','SG21','SF50','SD70','SG31','SF53','SD71','SF58','SG40','SD72'] },
-        '1B10 (Diabetes)': { d: [135,115,100,85,75,65,55,45,35,25], p: [175,155,135,120,105,90,75,60,50,40], m: [25,55,5,5,10], dL: ['Upper Xiao','Middle Xiao','Lower Xiao','Qi/Yin Def','Kidney Def','Blood Stasis','Liver Fire','Stomach Heat','Lung Dry','Essence Leak'], pL: ['SD70','SF54','SD71','SF58','SF50','SF53','SG21','SG31','SG40','SD72'] },
-        'ME84 (Back Pain)': { d: [195,175,155,135,115,100,85,70,55,40], p: [210,190,170,155,140,125,110,95,80,65], m: [15,25,5,5,50], dL: ['Kidney Def','Blood Stasis','Wind-Damp','Cold-Damp','Trauma','Qi Stag.','Marrow Def','Tendon Bi','Vessel Bi','Fixed Bi'], pL: ['SD71','SF53','SG21','SF54','SD70','SF50','SF58','SG31','SG40','SD72'] },
-        '6D70 (Insomnia)': { d: [155,135,115,100,85,75,65,55,45,35], p: [195,175,155,140,125,110,95,80,65,50], m: [60,15,5,5,15], dL: ['Heart/Spleen','Liver Fire','Heart/Kidney','Stomach Disharmony','Gallbladder','Qi Def','Blood Def','Yin Def','Empty Heat','Spirit Unrest'], pL: ['SF50','SD70','SF54','SF58','SD71','SF53','SG21','SG31','SG40','SD72'] },
-        'BC20 (Hypertension)': { d: [145,125,110,95,85,75,65,55,45,35], p: [185,170,155,140,125,110,95,80,65,50], m: [45,30,10,5,10], dL: ['Liver Yang','Liver/Kidney','Heart Fire','Phlegm-Damp','Blood Stasis','Qi/Blood Def','Wind Stir','Yin Def','Yang Def','Essence Def'], pL: ['SF50','SD70','SG31','SF53','SD71','SF54','SF58','SG21','SG40','SD72'] }
-    };
-
-    // 2. 캔버스 및 차트 옵션 초기화
-    const mCtx = document.getElementById('morbidityCanvas').getContext('2d');
-    const dCtx = document.getElementById('disorderCanvas').getContext('2d');
-    const pCtx = document.getElementById('patternCanvas').getContext('2d');
-    const moCtx = document.getElementById('modalityCanvas').getContext('2d');
-
-    const subOpts = { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { font: { size: 9 }, autoSkip: false } } }, plugins: { legend: { display: false } } };
-
-    // 3. 차트 객체 생성 (전문 지표 명칭 사용)
-    let disorderChart = new Chart(dCtx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Cases', data: [], backgroundColor: '#8b5cf6', borderRadius: 4 }] }, options: subOpts });
-    let patternChart = new Chart(pCtx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Cases', data: [], backgroundColor: '#10b981', borderRadius: 4 }] }, options: subOpts });
-    let modalityChart = new Chart(moCtx, { type: 'radar', data: { labels: ['TCM','Ayurveda','Siddha','Unani','Others'], datasets: [{ label: 'Mix (%)', data: [], backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', borderWidth: 2, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 80, ticks: { display: false } } } } });
-
-    const mLabels = Object.keys(tmMorbidityDB);
-    const morbidityChart = new Chart(mCtx, {
-        type: 'bar',
-        data: {
-            labels: ['0-14','15-29','30-44','45-59','60-74','75+'],
-            datasets: mLabels.map((l, i) => ({
-                label: l, 
-                data: [8,15,22,28,20,12].map(v => v + Math.random()*15), // 10개 데이터 생성
-                backgroundColor: `hsl(${i * 36}, 70%, 55%)`, // 10개 색상 자동 분배
-                borderRadius: 4
-            }))
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { 
-                x: { stacked: true }, 
-                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Total Case Volume (Standard ICD-11)' } } 
-            },
-            onClick: (e, el) => { if(el.length > 0) update(morbidityChart.data.datasets[el[0].datasetIndex].label); },
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 }, padding: 15 } } }
-        }
+    // 4. ICHI Consistency Bars
+    const ichiStats = {};
+    data.forEach(d => {
+        const key = d['Main complaint'];
+        if(!ichiStats[key]) ichiStats[key] = { total: 0, codes: {} };
+        ichiStats[key].total++;
+        ichiStats[key].codes[d.ICHI_Code] = (ichiStats[key].codes[d.ICHI_Code] || 0) + 1;
     });
 
-    // 4. 동적 업데이트 로직
-    function update(key) {
-        const data = tmMorbidityDB[key];
-        if(!data) return;
-        disorderChart.data.labels = data.dL; disorderChart.data.datasets[0].data = data.d; disorderChart.update();
-        patternChart.data.labels = data.pL; patternChart.data.datasets[0].data = data.p; patternChart.update();
-        modalityChart.data.datasets[0].data = data.m; modalityChart.update();
-    }
-
-    // 첫 번째 질환 데이터 자동 로드
-    update(mLabels[0]);
-
- // Continuity of Care
-    const chartDefaults = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
-    };
-
-    // 1. D-3 Pareto (Line Chart)
-    new Chart(document.getElementById('paretoChart'), {
-        type: 'line',
-        data: {
-            labels: ['0', '20', '40', '60', '80', '100'],
-            datasets: [{
-                data: [0, 41.4, 65, 82, 93, 100],
-                borderColor: '#1e40af',
-                borderWidth: 3,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#1e40af',
-                pointRadius: 4,
-                fill: true,
-                backgroundColor: 'rgba(30, 64, 175, 0.05)',
-                tension: 0.3
-            }, {
-                data: [0, 20, 40, 60, 80, 100],
-                borderColor: '#e2e8f0',
-                borderDash: [5, 5],
-                fill: false
-            }]
-        },
-        options: {
-            ...chartDefaults,
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }
-            }
-        }
+    const ichiContainer = document.getElementById('ichiBars');
+    Object.entries(ichiStats).slice(0, 8).forEach(([complaint, stats]) => {
+        const maxUsage = Math.max(...Object.values(stats.codes));
+        const pct = ((maxUsage / stats.total) * 100).toFixed(1);
+        ichiContainer.innerHTML += `
+            <div class="hbar-row">
+                <div class="hbar-label">${complaint}</div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div>
+                <div class="hbar-val">${pct}%</div>
+            </div>
+        `;
     });
+}
 
-    // 2. D-2 HFUR (Doughnut)
-    new Chart(document.getElementById('hfurChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['High-Freq', 'Occasional'],
-            datasets: [{
-                data: [39.2, 60.8],
-                backgroundColor: ['#0d9488', '#f1f5f9'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            ...chartDefaults,
-            cutout: '82%',
-            plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
-        }
-    });
-
-    // 3. D-1 CCI (Bar Chart)
-    new Chart(document.getElementById('cciChart'), {
-        type: 'bar',
-        data: {
-            labels: ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'],
-            datasets: [{
-                data: [350, 720, 1100, 850, 500, 780],
-                backgroundColor: (ctx) => ctx.index === 5 ? '#f59e0b' : '#e2e8f0',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            ...chartDefaults,
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                y: { display: false }
-            }
-        }
-    });
+// 초기화 시작
+initDashboard();
 </script>
+
 </body>
 </html>
