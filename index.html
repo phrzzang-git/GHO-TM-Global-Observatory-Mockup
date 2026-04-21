@@ -56,7 +56,7 @@
 </head>
 <body>
 
-<div id="loading">CONNECTING TO REAL TIME DATA SET...</div>
+<div id="loading">CONNECTING TO REAL-TIME DATA SET...</div>
 
 <div class="sim-banner">
     <div class="sim-dot"></div>
@@ -119,30 +119,56 @@
 </div>
 
 <script>
-
+// 1. 설정: 구글 앱스 스크립트 URL
 const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
+
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', initDashboard);
 
 async function initDashboard() {
     try {
         const response = await fetch(API_URL);
         const data = await response.json();
+        
+        // 로딩 메시지 숨기기
         document.getElementById('loading').style.display = 'none';
         
+        // 대시보드 렌더링 컨트롤 타워 실행
         renderDashboard(data);
-        renderGpiAgeChart(data);
     } catch (err) {
-        document.getElementById('loading').innerText = "Error loading data. Check Console.";
-        console.error(err);
+        document.getElementById('loading').innerText = "데이터 연결 실패. 콘솔을 확인하세요.";
+        console.error("Fetch Error:", err);
     }
 }
 
+/**
+ * [Main Controller] 
+ * 데이터를 받아서 각 KPI와 차트 함수들을 순서대로 호출합니다.
+ */
 function renderDashboard(data) {
-    function renderGpiAgeChart(data) {
+    // 1. 상단 KPI 카드 업데이트
+    updateKPIs(data);
+
+    // 2. 국가별 OPD/IPD 차트 (기본 바 차트)
+    renderOpdIpdChart(data);
+
+    // 3. 연령대별 Gender Parity 콤보 차트 (질문하신 핵심 로직!)
+    renderGpiAgeChart(data);
+
+    // 4. 질환 및 인터벤션 차트
+    renderDisorderChart(data);
+    renderIchiBars(data);
+}
+
+/**
+ * [차트 1] 연령대별 Gender Parity (막대 + 꺾은선 콤보)
+ */
+function renderGpiAgeChart(data) {
     const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
     const countries = [...new Set(data.map(d => d.Country))].sort();
     const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8', '#b85a5a'];
 
-    // 1. 나이 그룹 판별 함수
+    // 생년월일로 나이 그룹 판별하는 내부 함수
     const getAgeGroup = (dob) => {
         const age = 2026 - new Date(dob).getFullYear();
         if (age <= 14) return '0-14';
@@ -153,7 +179,7 @@ function renderDashboard(data) {
         return '75+';
     };
 
-    // 2. 데이터 구조화
+    // 국가별 막대 데이터(Bar) 생성
     const datasets = countries.map((country, idx) => ({
         type: 'bar',
         label: country,
@@ -161,14 +187,15 @@ function renderDashboard(data) {
             const groupData = data.filter(d => d.Country === country && getAgeGroup(d['Date of birth']) === group);
             const f = groupData.filter(d => d.Gender === 'Female').length;
             const m = groupData.filter(d => d.Gender === 'Male').length;
-            return m === 0 ? (f > 0 ? 2 : 1) : parseFloat((f / m).toFixed(2));
+            // Male이 0일 경우 에러 방지 위해 1로 처리하거나 비율 조정
+            return m === 0 ? (f > 0 ? 1.5 : 0) : parseFloat((f / m).toFixed(2));
         }),
         backgroundColor: colors[idx % colors.length],
-        barPercentage: 0.8,
+        barPercentage: 0.7,
         categoryPercentage: 0.8
     }));
 
-    // 3. 전체 평균선(Line) 계산
+    // 전체 평균선(Line) 계산 및 추가
     const globalAverages = ageGroups.map(group => {
         const groupData = data.filter(d => getAgeGroup(d['Date of birth']) === group);
         const f = groupData.filter(d => d.Gender === 'Female').length;
@@ -182,59 +209,50 @@ function renderDashboard(data) {
         data: globalAverages,
         borderColor: '#1c1b18',
         borderWidth: 2,
+        pointRadius: 4,
         pointBackgroundColor: '#1c1b18',
         fill: false,
         tension: 0.3,
-        order: -1 // 선이 막대보다 위로 오게 설정
+        order: -1 // 선을 막대보다 앞으로
     });
 
-    // 4. 차트 생성
     new Chart(document.getElementById('gpiAgeChart'), {
-        data: {
-            labels: ageGroups,
-            datasets: datasets
-        },
+        data: { labels: ageGroups, datasets: datasets },
         options: {
             responsive: true,
             scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'GPI (Female/Male)', font: { size: 10 } },
-                    grid: { color: '#eeecea' }
-                },
-                x: { grid: { display: false } }
+                y: { 
+                    beginAtZero: true, 
+                    title: { display: true, text: 'GPI (F/M Ratio)', font: { size: 10 } }
+                }
             },
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { boxWidth: 8, font: { size: 9 } }
-                },
-                // 1.0 기준선 (Parity) 추가를 위한 플러그인 생략 가능하지만 넣으면 직관적입니다.
+                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
             }
         }
     });
 }
-    // 1. KPI 계산
+
+/**
+ * [도우미 함수들]
+ */
+function updateKPIs(data) {
     const total = data.length;
     const female = data.filter(d => d.Gender === 'Female').length;
     const male = data.filter(d => d.Gender === 'Male').length;
     const ipd = data.filter(d => d.Visit_Type === 'IPD').length;
-    const opd = total - ipd;
     
-    // 고령층 (70세 이상) 계산
-    const elderlyCount = data.filter(d => {
-        const age = 2026 - new Date(d['Date of birth']).getFullYear();
-        return age >= 70;
-    }).length;
-
     document.getElementById('kpi-total').innerText = total.toLocaleString();
     document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
-    document.getElementById('kpi-opdipd').innerText = (opd / (ipd || 1)).toFixed(1) + ":1";
-    document.getElementById('kpi-elderly').innerText = ((elderlyCount / total) * 100).toFixed(1) + "%";
+    document.getElementById('kpi-opdipd').innerText = ((total-ipd) / (ipd || 1)).toFixed(1) + ":1";
+    
+    const elderly = data.filter(d => (2026 - new Date(d['Date of birth']).getFullYear()) >= 70).length;
+    document.getElementById('kpi-elderly').innerText = ((elderly / total) * 100).toFixed(1) + "%";
+}
 
-    // 2. 국가별 OPD/IPD 차트
+function renderOpdIpdChart(data) {
     const countries = [...new Set(data.map(d => d.Country))].sort();
-    const opdIpdVals = countries.map(c => {
+    const values = countries.map(c => {
         const cData = data.filter(d => d.Country === c);
         const o = cData.filter(d => d.Visit_Type === 'OPD').length;
         const i = cData.filter(d => d.Visit_Type === 'IPD').length;
@@ -245,51 +263,51 @@ function renderDashboard(data) {
         type: 'bar',
         data: {
             labels: countries,
-            datasets: [{ label: 'Ratio', data: opdIpdVals, backgroundColor: '#4a7c8e' }]
-        },
-        options: { plugins: { legend: false } }
+            datasets: [{ label: 'OPD/IPD Ratio', data: values, backgroundColor: '#4a7c8e' }]
+        }
     });
+}
 
-    // 3. TM Disorder Top 10 (가로 막대)
-    const disorders = {};
-    data.forEach(d => disorders[d.TM_Disorder] = (disorders[d.TM_Disorder] || 0) + 1);
-    const topDisorders = Object.entries(disorders).sort((a,b) => b[1]-a[1]).slice(0, 10);
+function renderDisorderChart(data) {
+    const counts = {};
+    data.forEach(d => counts[d.TM_Disorder] = (counts[d.TM_Disorder] || 0) + 1);
+    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 10);
 
     new Chart(document.getElementById('disorderChart'), {
         type: 'bar',
         data: {
-            labels: topDisorders.map(x => x[0]),
-            datasets: [{ data: topDisorders.map(x => x[1]), backgroundColor: '#7a5c8a' }]
+            labels: sorted.map(x => x[0]),
+            datasets: [{ data: sorted.map(x => x[1]), backgroundColor: '#7a5c8a' }]
         },
-        options: { indexAxis: 'y', plugins: { legend: false } }
+        options: { indexAxis: 'y' }
     });
+}
 
-    // 4. ICHI Consistency Bars
-    const ichiStats = {};
+function renderIchiBars(data) {
+    const stats = {};
     data.forEach(d => {
         const key = d['Main complaint'];
-        if(!ichiStats[key]) ichiStats[key] = { total: 0, codes: {} };
-        ichiStats[key].total++;
-        ichiStats[key].codes[d.ICHI_Code] = (ichiStats[key].codes[d.ICHI_Code] || 0) + 1;
+        if(!stats[key]) stats[key] = { total: 0, codes: {} };
+        stats[key].total++;
+        stats[key].codes[d.ICHI_Code] = (stats[key].codes[d.ICHI_Code] || 0) + 1;
     });
 
-    const ichiContainer = document.getElementById('ichiBars');
-    Object.entries(ichiStats).slice(0, 8).forEach(([complaint, stats]) => {
-        const maxUsage = Math.max(...Object.values(stats.codes));
-        const pct = ((maxUsage / stats.total) * 100).toFixed(1);
-        ichiContainer.innerHTML += `
+    const container = document.getElementById('ichiBars');
+    container.innerHTML = '';
+    Object.entries(stats).slice(0, 8).forEach(([complaint, s]) => {
+        const max = Math.max(...Object.values(s.codes));
+        const pct = ((max / s.total) * 100).toFixed(1);
+        container.innerHTML += `
             <div class="hbar-row">
                 <div class="hbar-label">${complaint}</div>
                 <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div>
                 <div class="hbar-val">${pct}%</div>
-            </div>
-        `;
+            </div>`;
     });
 }
-
-// 초기화 시작
-initDashboard();
 </script>
+
+
 
 </body>
 </html>
