@@ -79,7 +79,10 @@
 </div>
 
 <script>
+// 1. 설정: 본인의 구글 앱스 스크립트 URL
 const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
+
+let mainAnnualChart = null;
 let subCharts = { radar: null, icd: null, disorder: null, pattern: null };
 
 document.addEventListener('DOMContentLoaded', initDashboard);
@@ -91,8 +94,8 @@ async function initDashboard() {
         document.getElementById('loading').style.display = 'none';
         renderDashboard(data);
     } catch (err) {
-        document.getElementById('loading').innerText = "Connection Error.";
-        console.error(err);
+        document.getElementById('loading').innerText = "Connection Error. Check URL or Console.";
+        console.error("Fetch Error:", err);
     }
 }
 
@@ -100,74 +103,99 @@ function renderDashboard(data) {
     updateKPIs(data);
     renderOpdIpdChart(data);
     renderGpiAgeChart(data);
-    renderAnnualInteractiveChart(data);
+    renderAnnualInteractiveChart(data); // 섹션 03 실행
 }
 
-function updateKPIs(data) {
-    const total = data.length;
-    const female = data.filter(d => d.Gender === 'Female').length;
-    const male = data.filter(d => d.Gender === 'Male').length;
-    const ipd = data.filter(d => d.Visit_Type === 'IPD').length;
-    const elderly = data.filter(d => (2026 - new Date(d['Date of birth']).getFullYear()) >= 70).length;
-
-    document.getElementById('kpi-total').innerText = total.toLocaleString();
-    document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
-    document.getElementById('kpi-opdipd').innerText = ((total-ipd) / (ipd || 1)).toFixed(1) + ":1";
-    document.getElementById('kpi-elderly').innerText = ((elderly / total) * 100).toFixed(1) + "%";
+/**
+ * 날짜에서 연도를 안전하게 뽑아내는 헬퍼 함수
+ */
+function getYearSafe(dateVal) {
+    if (!dateVal) return null;
+    const d = new Date(dateVal);
+    // 날짜 객체 생성 성공 시
+    if (!isNaN(d.getTime())) return d.getFullYear();
+    // 실패 시 문자열에서 숫자 4자리 추출 시도 (예: 2024.01.01 등)
+    const match = dateVal.toString().match(/\d{4}/);
+    return match ? parseInt(match[0]) : null;
 }
 
+/**
+ * [섹션 03] 연도별 Unique Patients 및 상호작용 차트
+ */
 function renderAnnualInteractiveChart(data) {
     const years = [2022, 2023, 2024, 2025, 2026];
-    const countries = [...new Set(data.map(d => d.Country))].sort();
+    
+    // 데이터에서 국가명을 동적으로 추출 (CountryA~E 자동 감지)
+    const countries = [...new Set(data.map(d => d.Country))].filter(c => c).sort();
     const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'];
 
-    const datasets = countries.map((c, i) => ({
+    const datasets = countries.map((country, idx) => ({
         type: 'bar',
-        label: c,
-        data: years.map(y => {
-            const matches = data.filter(d => d.Country === c && new Date(d['Visit Date']).getFullYear() === y);
+        label: country,
+        data: years.map(year => {
+            // 해당 국가와 연도에 맞는 데이터 필터링
+            const matches = data.filter(d => 
+                d.Country === country && 
+                getYearSafe(d['Visit Date']) === year
+            );
+            // Patient_ID 기준 고유 환자 수 계산
             return new Set(matches.map(d => d.Patient_ID)).size;
         }),
-        backgroundColor: colors[i % 5],
-        barPercentage: 0.6
+        backgroundColor: colors[idx % colors.length],
+        barPercentage: 0.7
     }));
 
-    const annualAverages = years.map(y => {
-        const yearData = data.filter(d => new Date(d['Visit Date']).getFullYear() === y);
-        return new Set(yearData.map(d => d.Patient_ID)).size / (countries.length || 1);
+    // 평균선 계산
+    const annualAverages = years.map(year => {
+        const yearData = data.filter(d => getYearSafe(d['Visit Date']) === year);
+        const uniqueTotal = new Set(yearData.map(d => d.Patient_ID)).size;
+        return uniqueTotal / (countries.length || 1);
     });
 
     datasets.push({
         type: 'line',
-        label: 'Average',
+        label: 'Global Average',
         data: annualAverages,
         borderColor: '#1c1b18',
         borderWidth: 3,
         pointRadius: 6,
+        pointBackgroundColor: '#f0e8d0',
         fill: false,
         tension: 0,
         order: -1
     });
 
-    new Chart(document.getElementById('annualTrendChart'), {
+    const ctx = document.getElementById('annualTrendChart');
+    if (!ctx) return;
+    if (mainAnnualChart) mainAnnualChart.destroy();
+
+    mainAnnualChart = new Chart(ctx, {
         data: { labels: years, datasets: datasets },
         options: {
+            responsive: true,
             maintainAspectRatio: false,
-            onClick: (e, el) => {
-                if (el.length > 0) {
-                    const year = years[el[0].index];
-                    updateSubCharts(data, year);
+            onClick: (e, elements) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const selectedYear = years[idx];
+                    updateSubCharts(data, selectedYear);
                 }
-            }
+            },
+            scales: { y: { beginAtZero: true } }
         }
     });
 
+    // 초기 상태: 전체 데이터 표시
     updateSubCharts(data, "Total");
 }
 
 function updateSubCharts(data, year) {
-    document.getElementById('selected-year-label').innerText = year === "Total" ? "All Years Combined" : "Year: " + year;
-    const filtered = year === "Total" ? data : data.filter(d => new Date(d['Visit Date']).getFullYear() === year);
+    const labelElem = document.getElementById('selected-year-label');
+    if (labelElem) labelElem.innerText = year === "Total" ? "All Years" : "Year: " + year;
+
+    const filtered = year === "Total" 
+        ? data 
+        : data.filter(d => getYearSafe(d['Visit Date']) === year);
 
     renderRadar(filtered);
     renderSubBar(filtered, 'ICD11_Code', 'subIcdChart', '#4a7c8e');
@@ -175,32 +203,63 @@ function updateSubCharts(data, year) {
     renderSubBar(filtered, 'TM_Pattern', 'subPatternChart', '#6b8f5e');
 }
 
+// --- 나머지 Radar, SubBar, KPI 함수들은 이전과 동일하게 유지 ---
 function renderRadar(fData) {
     const counts = {};
-    fData.forEach(d => counts[d.Modality] = (counts[d.Modality] || 0) + 1);
+    fData.forEach(d => { if(d.Modality) counts[d.Modality] = (counts[d.Modality] || 0) + 1; });
+    const ctx = document.getElementById('modalityRadarChart');
     if(subCharts.radar) subCharts.radar.destroy();
-    subCharts.radar = new Chart(document.getElementById('modalityRadarChart'), {
+    subCharts.radar = new Chart(ctx, {
         type: 'radar',
-        data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.2)', borderColor: '#4a7c8e' }]},
-        options: { plugins: { legend: false } }
+        data: {
+            labels: Object.keys(counts),
+            datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.2)', borderColor: '#4a7c8e' }]
+        },
+        options: { plugins: { legend: false }, maintainAspectRatio: false }
     });
 }
 
 function renderSubBar(fData, field, canvasId, color) {
     const counts = {};
-    fData.forEach(d => counts[d[field]] = (counts[d[field]] || 0) + 1);
+    fData.forEach(d => { if(d[field]) counts[d[field]] = (counts[d[field]] || 0) + 1; });
     const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+    const ctx = document.getElementById(canvasId);
     if(subCharts[canvasId]) subCharts[canvasId].destroy();
-    subCharts[canvasId] = new Chart(document.getElementById(canvasId), {
+    subCharts[canvasId] = new Chart(ctx, {
         type: 'bar',
-        data: { labels: top.map(x => x[0]), datasets: [{ data: top.map(x => x[1]), backgroundColor: color }]},
+        data: {
+            labels: top.map(x => x[0]),
+            datasets: [{ data: top.map(x => x[1]), backgroundColor: color }]
+        },
         options: { indexAxis: 'y', plugins: { legend: false }, maintainAspectRatio: false }
+    });
+}
+
+function updateKPIs(data) {
+    const total = data.length;
+    const female = data.filter(d => d.Gender === 'Female').length;
+    const male = data.filter(d => d.Gender === 'Male').length;
+    const ipd = data.filter(d => d.Visit_Type === 'IPD').length;
+    document.getElementById('kpi-total').innerText = total.toLocaleString();
+    document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
+    document.getElementById('kpi-opdipd').innerText = ((total-ipd) / (ipd || 1)).toFixed(1) + ":1";
+}
+
+function renderOpdIpdChart(data) {
+    const countries = [...new Set(data.map(d => d.Country))].filter(c => c).sort();
+    const vals = countries.map(c => {
+        const d = data.filter(x => x.Country === c);
+        return (d.filter(x => x.Visit_Type === 'OPD').length / (d.filter(x => x.Visit_Type === 'IPD').length || 1)).toFixed(2);
+    });
+    new Chart(document.getElementById('opdIpdChart'), {
+        type: 'bar',
+        data: { labels: countries, datasets: [{ label: 'Ratio', data: vals, backgroundColor: '#4a7c8e' }]}
     });
 }
 
 function renderGpiAgeChart(data) {
     const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
-    const countries = [...new Set(data.map(d => d.Country))].sort();
+    const countries = [...new Set(data.map(d => d.Country))].filter(c => c).sort();
     const getAge = (dob) => {
         const age = 2026 - new Date(dob).getFullYear();
         if (age <= 14) return '0-14'; if (age <= 29) return '15-29';
@@ -217,18 +276,6 @@ function renderGpiAgeChart(data) {
         })
     }));
     new Chart(document.getElementById('gpiAgeChart'), { data: { labels: ageGroups, datasets: datasets }});
-}
-
-function renderOpdIpdChart(data) {
-    const countries = [...new Set(data.map(d => d.Country))].sort();
-    const vals = countries.map(c => {
-        const d = data.filter(x => x.Country === c);
-        return (d.filter(x => x.Visit_Type === 'OPD').length / (d.filter(x => x.Visit_Type === 'IPD').length || 1)).toFixed(2);
-    });
-    new Chart(document.getElementById('opdIpdChart'), {
-        type: 'bar',
-        data: { labels: countries, datasets: [{ label: 'Ratio', data: vals, backgroundColor: '#4a7c8e' }]}
-    });
 }
 </script>
 </body>
