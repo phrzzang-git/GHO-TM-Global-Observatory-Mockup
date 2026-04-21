@@ -221,7 +221,7 @@ function renderAnnualInteractiveChart(data) {
         type: 'bar',
         label: country,
         data: years.map(year => {
-            const matches = data.filter(d => d.Country === country && getYear(d['Date of consultation']) === year);
+            const matches = data.filter(d => d.Country === country && getYear(d['Visit Date']) === year);
             return new Set(matches.map(d => d.Patient_ID)).size; 
         }),
         backgroundColor: colors[idx % colors.length],
@@ -230,7 +230,7 @@ function renderAnnualInteractiveChart(data) {
 
     // 평균선 데이터
     const annualAverages = years.map(year => {
-        const yearData = data.filter(d => getYear(d['Date of consultation']) === year);
+        const yearData = data.filter(d => getYear(d['Visit Date']) === year);
         const uniqueTotal = new Set(yearData.map(d => d.Patient_ID)).size;
         return uniqueTotal / (countries.length || 1);
     });
@@ -279,7 +279,7 @@ function updateSubCharts(data, year) {
 
     const filtered = year === "Total" 
         ? data 
-        : data.filter(d => new Date(d['Date of consultation']).getFullYear() === year);
+        : data.filter(d => new Date(d['Visit Date']).getFullYear() === year);
 
     // 1. Modality 방사형 차트
     renderRadar(filtered);
