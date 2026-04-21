@@ -116,13 +116,47 @@
             <div id="ichiBars"></div>
         </div>
     </div>
+
+    <div class="section-head">
+    <h2>03 · Annual Patient Trends & Deep Dive</h2>
+</div>
+
+<div class="grid g1">
+    <div class="card">
+        <div class="card-title">Unique Patients by Year & Country (Click Average Points for Details)</div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <canvas id="annualTrendChart" height="300"></canvas>
+            <div class="card" style="border: 1px dashed var(--border2);">
+                <div class="card-title" style="font-size: 11px;">Selected Year: <span id="selected-year-label">Total</span></div>
+                <canvas id="modalityRadarChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid g3">
+    <div class="card">
+        <div class="card-title">ICD-11 Code Distribution</div>
+        <canvas id="subIcdChart" height="250"></canvas>
+    </div>
+    <div class="card">
+        <div class="card-title">TM Disorder Analysis</div>
+        <canvas id="subDisorderChart" height="250"></canvas>
+    </div>
+    <div class="card">
+        <div class="card-title">TM Pattern Analysis</div>
+        <canvas id="subPatternChart" height="250"></canvas>
+    </div>
+</div>
 </div>
 
 <script>
-// 1. 설정: 구글 앱스 스크립트 URL
+// 1. 설정: 구글 앱스 스크립트 배포 URL (본인의 URL로 반드시 수정)
 const API_URL = "https://script.google.com/macros/s/AKfycbyy2nuayzX3glsCOQdsOc4hKZukHzotf3e33ASi5Tqr1j5JvkMhxnYVtqdx21mTTJJgSA/exec";
+// 전역 변수: 하위 차트들을 제어하기 위해 저장하는 객체
+let subCharts = { radar: null, icd: null, disorder: null, pattern: null };
 
-// 페이지 로드 시 실행
+// 페이지 로드 시 대시보드 초기화
 document.addEventListener('DOMContentLoaded', initDashboard);
 
 async function initDashboard() {
@@ -133,108 +167,30 @@ async function initDashboard() {
         // 로딩 메시지 숨기기
         document.getElementById('loading').style.display = 'none';
         
-        // 대시보드 렌더링 컨트롤 타워 실행
+        // 대시보드 메인 컨트롤러 실행
         renderDashboard(data);
     } catch (err) {
-        document.getElementById('loading').innerText = "데이터 연결 실패. 콘솔을 확인하세요.";
+        document.getElementById('loading').innerText = "데이터 연결 실패. URL을 확인하세요.";
         console.error("Fetch Error:", err);
     }
 }
 
 /**
- * [Main Controller] 
- * 데이터를 받아서 각 KPI와 차트 함수들을 순서대로 호출합니다.
+ * [Main Controller] 모든 차트 함수를 여기서 관리합니다.
  */
 function renderDashboard(data) {
-    // 1. 상단 KPI 카드 업데이트
-    updateKPIs(data);
-
-    // 2. 국가별 OPD/IPD 차트 (기본 바 차트)
-    renderOpdIpdChart(data);
-
-    // 3. 연령대별 Gender Parity 콤보 차트 (질문하신 핵심 로직!)
-    renderGpiAgeChart(data);
-
-    // 4. 질환 및 인터벤션 차트
+    updateKPIs(data);               // 1. KPI 카드 업데이트
+    renderOpdIpdChart(data);        // 2. 국가별 OPD/IPD
+    renderGpiAgeChart(data);        // 3. 연령대별 성별 지수 (콤보)
+    renderAnnualInteractiveChart(data); // 4. 연도별 트렌드 & 상호작용 차트 (신규)
+    
+    // 섹션 2의 기본 차트들
     renderDisorderChart(data);
     renderIchiBars(data);
 }
 
 /**
- * [차트 1] 연령대별 Gender Parity (막대 + 꺾은선 콤보)
- */
-function renderGpiAgeChart(data) {
-    const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
-    const countries = [...new Set(data.map(d => d.Country))].sort();
-    const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8', '#b85a5a'];
-
-    // 생년월일로 나이 그룹 판별하는 내부 함수
-    const getAgeGroup = (dob) => {
-        const age = 2026 - new Date(dob).getFullYear();
-        if (age <= 14) return '0-14';
-        if (age <= 29) return '15-29';
-        if (age <= 44) return '30-44';
-        if (age <= 59) return '45-59';
-        if (age <= 74) return '60-74';
-        return '75+';
-    };
-
-    // 국가별 막대 데이터(Bar) 생성
-    const datasets = countries.map((country, idx) => ({
-        type: 'bar',
-        label: country,
-        data: ageGroups.map(group => {
-            const groupData = data.filter(d => d.Country === country && getAgeGroup(d['Date of birth']) === group);
-            const f = groupData.filter(d => d.Gender === 'Female').length;
-            const m = groupData.filter(d => d.Gender === 'Male').length;
-            // Male이 0일 경우 에러 방지 위해 1로 처리하거나 비율 조정
-            return m === 0 ? (f > 0 ? 1.5 : 0) : parseFloat((f / m).toFixed(2));
-        }),
-        backgroundColor: colors[idx % colors.length],
-        barPercentage: 0.7,
-        categoryPercentage: 0.8
-    }));
-
-    // 전체 평균선(Line) 계산 및 추가
-    const globalAverages = ageGroups.map(group => {
-        const groupData = data.filter(d => getAgeGroup(d['Date of birth']) === group);
-        const f = groupData.filter(d => d.Gender === 'Female').length;
-        const m = groupData.filter(d => d.Gender === 'Male').length;
-        return m === 0 ? 1 : parseFloat((f / m).toFixed(2));
-    });
-
-    datasets.push({
-        type: 'line',
-        label: 'Global Average',
-        data: globalAverages,
-        borderColor: '#1c1b18',
-        borderWidth: 2,
-        pointRadius: 4,
-        pointBackgroundColor: '#1c1b18',
-        fill: false,
-        tension: 0.3,
-        order: -1 // 선을 막대보다 앞으로
-    });
-
-    new Chart(document.getElementById('gpiAgeChart'), {
-        data: { labels: ageGroups, datasets: datasets },
-        options: {
-            responsive: true,
-            scales: {
-                y: { 
-                    beginAtZero: true, 
-                    title: { display: true, text: 'GPI (F/M Ratio)', font: { size: 10 } }
-                }
-            },
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
-            }
-        }
-    });
-}
-
-/**
- * [도우미 함수들]
+ * [KPI] 상단 요약 지표
  */
 function updateKPIs(data) {
     const total = data.length;
@@ -244,27 +200,164 @@ function updateKPIs(data) {
     
     document.getElementById('kpi-total').innerText = total.toLocaleString();
     document.getElementById('kpi-gpi').innerText = (female / (male || 1)).toFixed(2);
-    document.getElementById('kpi-opdipd').innerText = ((total-ipd) / (ipd || 1)).toFixed(1) + ":1";
+    document.getElementById('kpi-opdipd').innerText = ((total - ipd) / (ipd || 1)).toFixed(1) + ":1";
     
     const elderly = data.filter(d => (2026 - new Date(d['Date of birth']).getFullYear()) >= 70).length;
     document.getElementById('kpi-elderly').innerText = ((elderly / total) * 100).toFixed(1) + "%";
 }
 
+/**
+ * [차트 3] 연도별 Unique Patients & Interaction (가장 핵심!)
+ */
+function renderAnnualInteractiveChart(data) {
+    const years = [2022, 2023, 2024, 2025, 2026];
+    const countries = [...new Set(data.map(d => d.Country))].sort();
+    const colors = ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'];
+
+    const getYear = (dateStr) => new Date(dateStr).getFullYear();
+
+    // 국가별 Unique Patient 막대 데이터
+    const datasets = countries.map((country, idx) => ({
+        type: 'bar',
+        label: country,
+        data: years.map(year => {
+            const matches = data.filter(d => d.Country === country && getYear(d['Date of consultation']) === year);
+            return new Set(matches.map(d => d.Patient_ID)).size; 
+        }),
+        backgroundColor: colors[idx % colors.length],
+        barPercentage: 0.6
+    }));
+
+    // 평균선 데이터
+    const annualAverages = years.map(year => {
+        const yearData = data.filter(d => getYear(d['Date of consultation']) === year);
+        const uniqueTotal = new Set(yearData.map(d => d.Patient_ID)).size;
+        return uniqueTotal / (countries.length || 1);
+    });
+
+    datasets.push({
+        type: 'line',
+        label: 'Average',
+        data: annualAverages,
+        borderColor: '#1c1b18',
+        borderWidth: 3,
+        pointRadius: 6,
+        pointHoverRadius: 10,
+        pointBackgroundColor: '#f0e8d0',
+        fill: false,
+        tension: 0,
+        order: -1
+    });
+
+    const ctx = document.getElementById('annualTrendChart').getContext('2d');
+    new Chart(ctx, {
+        data: { labels: years, datasets: datasets },
+        options: {
+            onClick: (evt, elements) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const selectedYear = years[idx];
+                    updateSubCharts(data, selectedYear); // 클릭 시 하위 차트 업데이트
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // 초기값은 'Total'로 세팅
+    updateSubCharts(data, "Total");
+}
+
+/**
+ * [상호작용 로직] 특정 점 클릭 시 호출되는 함수
+ */
+function updateSubCharts(data, year) {
+    const labelElem = document.getElementById('selected-year-label');
+    if(labelElem) labelElem.innerText = year;
+
+    const filtered = year === "Total" 
+        ? data 
+        : data.filter(d => new Date(d['Date of consultation']).getFullYear() === year);
+
+    // 1. Modality 방사형 차트
+    renderRadar(filtered);
+    // 2. 하단 세 개 분석 차트
+    renderSubBar(filtered, 'ICD11_Code', 'subIcdChart', '#4a7c8e');
+    renderSubBar(filtered, 'TM_Disorder', 'subDisorderChart', '#7a5c8a');
+    renderSubBar(filtered, 'TM_Pattern', 'subPatternChart', '#6b8f5e');
+}
+
+function renderRadar(filteredData) {
+    const counts = {};
+    filteredData.forEach(d => counts[d.Modality] = (counts[d.Modality] || 0) + 1);
+    
+    if(subCharts.radar) subCharts.radar.destroy();
+    subCharts.radar = new Chart(document.getElementById('modalityRadarChart'), {
+        type: 'radar',
+        data: {
+            labels: Object.keys(counts),
+            datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.2)', borderColor: '#4a7c8e' }]
+        },
+        options: { plugins: { legend: false }, scales: { r: { ticks: { display: false } } } }
+    });
+}
+
+function renderSubBar(filteredData, field, canvasId, color) {
+    const counts = {};
+    filteredData.forEach(d => counts[d[field]] = (counts[d[field]] || 0) + 1);
+    const top5 = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+    if(subCharts[canvasId]) subCharts[canvasId].destroy();
+    subCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: top5.map(x => x[0]),
+            datasets: [{ data: top5.map(x => x[1]), backgroundColor: color }]
+        },
+        options: { indexAxis: 'y', plugins: { legend: false }, maintainAspectRatio: false }
+    });
+}
+
+/**
+ * [기타 기본 차트들]
+ */
+function renderGpiAgeChart(data) {
+    const ageGroups = ['0-14', '15-29', '30-44', '45-59', '60-74', '75+'];
+    const countries = [...new Set(data.map(d => d.Country))].sort();
+    const getAgeGroup = (dob) => {
+        const age = 2026 - new Date(dob).getFullYear();
+        if (age <= 14) return '0-14'; if (age <= 29) return '15-29';
+        if (age <= 44) return '30-44'; if (age <= 59) return '45-59';
+        if (age <= 74) return '60-74'; return '75+';
+    };
+
+    const datasets = countries.map((c, i) => ({
+        type: 'bar', label: c, backgroundColor: ['#4a7c8e', '#7a5c8a', '#6b8f5e', '#c47a3a', '#5a7ab8'][i%5],
+        data: ageGroups.map(g => {
+            const d = data.filter(x => x.Country === c && getAgeGroup(x['Date of birth']) === g);
+            const f = d.filter(x => x.Gender === 'Female').length;
+            const m = d.filter(x => x.Gender === 'Male').length;
+            return m === 0 ? 1 : parseFloat((f/m).toFixed(2));
+        })
+    }));
+
+    new Chart(document.getElementById('gpiAgeChart'), {
+        data: { labels: ageGroups, datasets: datasets },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+}
+
 function renderOpdIpdChart(data) {
     const countries = [...new Set(data.map(d => d.Country))].sort();
     const values = countries.map(c => {
-        const cData = data.filter(d => d.Country === c);
-        const o = cData.filter(d => d.Visit_Type === 'OPD').length;
-        const i = cData.filter(d => d.Visit_Type === 'IPD').length;
-        return (o / (i || 1)).toFixed(2);
+        const d = data.filter(x => x.Country === c);
+        return (d.filter(x => x.Visit_Type === 'OPD').length / (d.filter(x => x.Visit_Type === 'IPD').length || 1)).toFixed(2);
     });
-
     new Chart(document.getElementById('opdIpdChart'), {
         type: 'bar',
-        data: {
-            labels: countries,
-            datasets: [{ label: 'OPD/IPD Ratio', data: values, backgroundColor: '#4a7c8e' }]
-        }
+        data: { labels: countries, datasets: [{ label: 'Ratio', data: values, backgroundColor: '#4a7c8e' }] }
     });
 }
 
@@ -272,13 +365,9 @@ function renderDisorderChart(data) {
     const counts = {};
     data.forEach(d => counts[d.TM_Disorder] = (counts[d.TM_Disorder] || 0) + 1);
     const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 10);
-
     new Chart(document.getElementById('disorderChart'), {
         type: 'bar',
-        data: {
-            labels: sorted.map(x => x[0]),
-            datasets: [{ data: sorted.map(x => x[1]), backgroundColor: '#7a5c8a' }]
-        },
+        data: { labels: sorted.map(x => x[0]), datasets: [{ data: sorted.map(x => x[1]), backgroundColor: '#7a5c8a' }] },
         options: { indexAxis: 'y' }
     });
 }
@@ -291,18 +380,11 @@ function renderIchiBars(data) {
         stats[key].total++;
         stats[key].codes[d.ICHI_Code] = (stats[key].codes[d.ICHI_Code] || 0) + 1;
     });
-
     const container = document.getElementById('ichiBars');
     container.innerHTML = '';
-    Object.entries(stats).slice(0, 8).forEach(([complaint, s]) => {
-        const max = Math.max(...Object.values(s.codes));
-        const pct = ((max / s.total) * 100).toFixed(1);
-        container.innerHTML += `
-            <div class="hbar-row">
-                <div class="hbar-label">${complaint}</div>
-                <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div>
-                <div class="hbar-val">${pct}%</div>
-            </div>`;
+    Object.entries(stats).slice(0, 8).forEach(([comp, s]) => {
+        const pct = ((Math.max(...Object.values(s.codes)) / s.total) * 100).toFixed(1);
+        container.innerHTML += `<div class="hbar-row"><div class="hbar-label">${comp}</div><div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div><div class="hbar-val">${pct}%</div></div>`;
     });
 }
 </script>
