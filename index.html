@@ -70,7 +70,7 @@
     </div>
 
    <div class="grid g4">
-        <!-- <div class="card"><div class="card-title">Modality</div><div class="chart-container"><canvas id="subRadarChart"></canvas></div></div>-->
+        <!--<div class="card"><div class="card-title">Modality</div><div class="chart-container"><canvas id="subRadarChart"></canvas></div></div>-->
         <div class="card"><div class="card-title">ICD-11 Top 10</div><div class="chart-container"><canvas id="subIcdChart"></canvas></div></div>
         <div class="card"><div class="card-title">Disorder Top 10</div><div class="chart-container"><canvas id="subDisorderChart"></canvas></div></div>
         <div class="card"><div class="card-title">Pattern Top 10</div><div class="chart-container"><canvas id="subPatternChart"></canvas></div></div>
@@ -203,14 +203,14 @@ function renderSubBar(fData, field, canvasId, color, isInteractive) {
 
 function renderRadar(fData) {
     const counts = {};
-    fData.forEach(d => { if(d.Modality) counts[d.Modality] = (counts[d.Modality] || 0) + 1; });
+    /**fData.forEach(d => { if(d.Modality) counts[d.Modality] = (counts[d.Modality] || 0) + 1; });
     const ctx = document.getElementById('subRadarChart').getContext('2d');
     if (charts.radar) charts.radar.destroy();
     charts.radar = new Chart(ctx, {
         type: 'radar',
         data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: 'rgba(74, 124, 142, 0.1)', borderColor: '#4a7c8e' }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false } }
-    });
+    });*/
 }
 
 function renderAnnualChart(data) {
