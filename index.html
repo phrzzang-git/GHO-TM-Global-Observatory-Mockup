@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MDS Analytics v3.1 - KPI Restored</title>
+    <title>TM Global Observatory Mock Up</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -37,13 +37,13 @@
 <body>
 
 <div id="loading">
-    <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">Synchronizing 100,000 Data Points...</div>
+    <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">Synchronizing...</div>
     <div id="load-status">Connecting to Warehouse...</div>
 </div>
 
 <div class="masthead">
-    <h1>TM Global Observatory <span style="font-weight: 300; font-size: 16px;">MDS Analytics v3.1</span></h1>
-    <div style="font-family: 'IBM Plex Mono'; font-size: 11px;">System Status: <span style="color: green;">● Real-time</span></div>
+    <h1>TM Global Observatory Mock Up<span style="font-weight: 300; font-size: 16px;">MDS Analytics v3.2</span></h1>
+    <div style="font-family: 'IBM Plex Mono'; font-size: 11px;">System Status: <span style="color: green;">● Real-time Mock Up Data</span></div>
 </div>
 
 <div class="body-wrap">
@@ -69,11 +69,12 @@
         <h2 style="font-size: 18px;">Deep Dive: <span id="current-filter-label" style="color: var(--c-blue);">Global Population</span></h2>
     </div>
 
-    <div class="grid g4">
-        <div class="card"><div class="card-title">Modality</div><div class="chart-container"><canvas id="subRadarChart"></canvas></div></div>
+   <div class="grid g4">
+        <!-- <div class="card"><div class="card-title">Modality</div><div class="chart-container"><canvas id="subRadarChart"></canvas></div></div>-->
         <div class="card"><div class="card-title">ICD-11 Top 10</div><div class="chart-container"><canvas id="subIcdChart"></canvas></div></div>
         <div class="card"><div class="card-title">Disorder Top 10</div><div class="chart-container"><canvas id="subDisorderChart"></canvas></div></div>
         <div class="card"><div class="card-title">Pattern Top 10</div><div class="chart-container"><canvas id="subPatternChart"></canvas></div></div>
+        <div class="card"><div class="card-title">ICHI Intervention Top 10</div><div class="chart-container"><canvas id="subICHIChart"></canvas></div></div>
     </div>
 </div>
 
@@ -170,6 +171,7 @@ function updateDeepDive(filteredData, label) {
     renderSubBar(filteredData, 'ICD11_Code', 'subIcdChart', '#4a7c8e', true);
     renderSubBar(filteredData, 'TM_Disorder', 'subDisorderChart', '#7a5c8a', false);
     renderSubBar(filteredData, 'TM_Pattern', 'subPatternChart', '#6b8f5e', false);
+    renderSubBar(filteredData, 'ICHI_Code', 'subICHIChart', '#9b8f5e', false);
 }
 
 function renderSubBar(fData, field, canvasId, color, isInteractive) {
@@ -191,6 +193,7 @@ function renderSubBar(fData, field, canvasId, color, isInteractive) {
                     const deeper = fData.filter(d => d.ICD11_Code === code);
                     renderSubBar(deeper, 'TM_Disorder', 'subDisorderChart', '#7a5c8a', false);
                     renderSubBar(deeper, 'TM_Pattern', 'subPatternChart', '#6b8f5e', false);
+                    renderSubBar(deeper, 'ICHI_Code', 'subICHIChart', '#9b8f5e', false);
                     document.getElementById('current-filter-label').innerText = `${label} > ${code}`;
                 }
             }
